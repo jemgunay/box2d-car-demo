@@ -1,7 +1,12 @@
 // Package car is a port of https://github.com/domasx2/gamejs-box2d-car-example
 package car
 
-import "github.com/ByteArena/box2d"
+import (
+	"math"
+
+	"github.com/ByteArena/box2d"
+	"github.com/faiface/pixel"
+)
 
 type state uint
 
@@ -99,7 +104,22 @@ func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
 	return carBody.GetLocalVector(carBody.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(w.x, w.y)))
 }
 
+func normaliseRadians(radians float64) float64 {
+	r := radians % (2*math.Pi)
+	if r<0 {
+		r+= 2*math.Pi 
+	}
+	return r
+}
 
+func rotate() box2d.B2Vec2 {
+	v[0]* Math.sin(angle)+v[1]*Math.cos(angle)];
+	angle := angles.normaliseRadians(angle);
+	return [v[0]* Math.cos(angle)-v[1]*Math.sin(angle),
+	return box2d.MakeB2Vec2()
+}
+
+// returns a world unit vector pointing in the direction this wheel is moving
 func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 	//return vectors.rotate((this.getLocalVelocity()[1]>0) ? [0, 1]:[0, -1] , this.body.GetAngle()) ;
 	var dirVec box2d.B2Vec2
@@ -112,8 +132,12 @@ func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 	return dirVec.
 }
 
-func (w *Wheel) getKillVelocityVector() {
-
+// substracts sideways velocity from this wheel's velocity vector and returns the remaining front-facing velocity vector.
+func (w *Wheel) getKillVelocityVector(carBody *box2d.B2Body) box2d.B2Vec2 {
+	vel := w.body.GetLinearVelocity()
+	sidewaysAxis := box2dToPixel(w.getDirectionVector(carBody))
+	dotProd := box2dToPixel(vel).Dot(sidewaysAxis)
+	return box2d.MakeB2Vec2(sidewaysAxis.X * dotProd, sidewaysAxis.Y * dotProd)
 }
 
 func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, revolving bool) {
@@ -179,4 +203,12 @@ func (c *Car) Update(dt float64) {
 
 func (c *Car) Draw() {
 
+}
+
+func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
+	return pixel.V(vec.X, vec.Y)
+}
+
+func pixelToBox2d(vec pixel.Vec) box2d.B2Vec2 {
+	return box2d.MakeB2Vec2(vec.X, vec.Y)
 }
