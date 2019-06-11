@@ -20,7 +20,7 @@ func main() {
 func start() {
 	// create window config
 	cfg := pixelgl.WindowConfig{
-		Title:     "Mandelbrot",
+		Title:     "Box2D Car Test",
 		Bounds:    pixel.R(0, 0, 1080, 720),
 		VSync:     false,
 		Resizable: true,
@@ -72,9 +72,9 @@ func start() {
 		world.Step(dt/1000, 10, 8)
 		world.ClearForces()
 
-		// draw window and mandelbrot
+		// draw window
 		win.Clear(color.White)
-		mainCar.Draw()
+		mainCar.Draw(win)
 		win.Update()
 
 		<-frameRateLimiter

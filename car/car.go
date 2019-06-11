@@ -6,6 +6,8 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
+	"github.com/faiface/pixel/pixelgl"
 )
 
 type state uint
@@ -96,7 +98,7 @@ type Wheel struct {
 	powered, revolving bool
 }
 
-func (w *Wheel) setAngle(angle float64) box2d.B2Vec2 {
+func (w *Wheel) setAngle(angle float64) {
 	w.body.SetTransform(w.body.GetPosition(), angle)
 }
 
@@ -104,19 +106,20 @@ func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
 	return carBody.GetLocalVector(carBody.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(w.x, w.y)))
 }
 
-func normaliseRadians(radians float64) float64 {
-	r := radians % (2*math.Pi)
+/*func normaliseRadians(radians float64) float64 {
+	r := radians % float64(2*math.Pi)
 	if r<0 {
-		r+= 2*math.Pi 
+		r+= 2*math.Pi
 	}
 	return r
-}
+}*/
 
-func rotate() box2d.B2Vec2 {
-	v[0]* Math.sin(angle)+v[1]*Math.cos(angle)];
-	angle := angles.normaliseRadians(angle);
-	return [v[0]* Math.cos(angle)-v[1]*Math.sin(angle),
-	return box2d.MakeB2Vec2()
+func rotate(vec box2d.B2Vec2, angle float64) box2d.B2Vec2 {
+	//angle=angles.normaliseRadians(angle);
+	vX := vec.X*math.Cos(angle) - vec.Y*math.Sin(angle)
+	vY := vec.X*math.Sin(angle) - vec.Y*math.Cos(angle)
+
+	return box2d.MakeB2Vec2(vX, vY)
 }
 
 // returns a world unit vector pointing in the direction this wheel is moving
@@ -129,7 +132,7 @@ func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 		dirVec = box2d.MakeB2Vec2(1, 0)
 	}
 	// https://github.com/GameJs/gamejs/blob/master/src/gamejs/math/vectors.js#L85
-	return dirVec.
+	return rotate(dirVec, w.body.GetAngle())
 }
 
 // substracts sideways velocity from this wheel's velocity vector and returns the remaining front-facing velocity vector.
@@ -137,7 +140,17 @@ func (w *Wheel) getKillVelocityVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 	vel := w.body.GetLinearVelocity()
 	sidewaysAxis := box2dToPixel(w.getDirectionVector(carBody))
 	dotProd := box2dToPixel(vel).Dot(sidewaysAxis)
-	return box2d.MakeB2Vec2(sidewaysAxis.X * dotProd, sidewaysAxis.Y * dotProd)
+	return box2d.MakeB2Vec2(sidewaysAxis.X*dotProd, sidewaysAxis.Y*dotProd)
+}
+
+func (w *Wheel) killSidewaysVelocity(carBody *box2d.B2Body) {
+	kv := w.getKillVelocityVector(carBody)
+	w.body.SetLinearVelocity(kv)
+}
+
+// returns car's velocity vector relative to the car
+func (c *Car) getLocalVelocity() box2d.B2Vec2 {
+	return c.body.GetLocalVector(c.body.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(0, 0)))
 }
 
 func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, revolving bool) {
@@ -194,15 +207,85 @@ func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, r
 	c.wheels = append(c.wheels, wheel)
 }
 
+// get speed in kilometers per hour
+func (c *Car) getSpeedKMH() float64 {
+	velocity := c.body.GetLinearVelocity()
+	len := velocity.Length()
+	return (len / 1000) * 3600
+}
+
+// set speed in kilometers per hour
+func (c *Car) setSpeed(speed float64) {
+	vel := box2dToPixel(c.body.GetLinearVelocity()).Unit()
+	vel.Scaled((speed * 1000) / 3600)
+	c.body.SetLinearVelocity(pixelToBox2d(vel.Unit()))
+}
+
 func (c *Car) Update(dt float64) {
 	// kill sideways velocity for all wheels
 	for _, w := range c.wheels {
+		w.killSidewaysVelocity(c.body)
+	}
 
+	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
+	// in 200 ms
+	incr := (c.maxSteerAngle / 200) * dt
+	if c.SteerState == SteerRight {
+		// increment angle without going over max steer
+		c.wheelAngle = math.Min(math.Max(c.wheelAngle, 0)+incr, c.maxSteerAngle)
+	} else if c.SteerState == SteerLeft {
+		// decrement angle without going over max steer
+		c.wheelAngle = math.Max(math.Min(c.wheelAngle, 0)-incr, c.maxSteerAngle)
+	} else {
+		c.wheelAngle = 0
+	}
+
+	// update revolving wheels
+	for _, w := range c.wheels {
+		if !w.revolving {
+			continue
+		}
+		w.setAngle(c.wheelAngle)
+	}
+
+	var baseVec box2d.B2Vec2
+	if (c.AccelerateState == AccAccelerate) && (c.getSpeedKMH() < c.maxSpeed) {
+		baseVec = box2d.MakeB2Vec2(0, -1)
+	} else if c.AccelerateState == AccBrake {
+		if c.getLocalVelocity().X < 0 {
+			baseVec = box2d.MakeB2Vec2(0, 1.3)
+		} else {
+			baseVec = box2d.MakeB2Vec2(0, 0.7)
+		}
+	} else {
+		baseVec = box2d.MakeB2Vec2(0, 0)
+	}
+
+	fVec := box2d.MakeB2Vec2(c.power*baseVec.X, c.power*baseVec.Y)
+	for _, w := range c.wheels {
+		if !w.powered {
+			continue
+		}
+		pos := w.body.GetWorldCenter()
+		w.body.ApplyForce(w.body.GetWorldVector(fVec), pos, true)
+	}
+
+	if c.getSpeedKMH() < 4 && c.AccelerateState == AccNone {
+		c.setSpeed(0)
 	}
 }
 
-func (c *Car) Draw() {
-
+func (c *Car) Draw(win *pixelgl.Window) {
+	carBodySprite := imdraw.New(nil)
+	carBodySprite.Color = pixel.RGB(0.5, 0.5, 0.5)
+	carBodySprite.Push(
+		pixel.V(c.body.GetPosition().X, c.body.GetPosition().Y),
+		pixel.V(c.body.GetPosition().X, c.body.GetPosition().Y+50),
+		pixel.V(c.body.GetPosition().X+50, c.body.GetPosition().Y+50),
+		pixel.V(c.body.GetPosition().X+50, c.body.GetPosition().Y),
+	)
+	carBodySprite.Polygon(0)
+	carBodySprite.Draw(win)
 }
 
 func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
