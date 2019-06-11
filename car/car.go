@@ -29,6 +29,7 @@ type Car struct {
 	SteerState      state
 	AccelerateState state
 
+	width, length float64
 	maxSteerAngle float64
 	maxSpeed      float64
 	power         float64
@@ -37,9 +38,8 @@ type Car struct {
 	wheels []*Wheel
 }
 
-func NewCar(w *box2d.B2World) *Car {
-	width, length := 2.0, 4.0
-	x, y := 10.0, 10.0
+func NewCar(w *box2d.B2World, width, length float64) *Car {
+	x, y := 100.0, 100.0
 
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
@@ -65,9 +65,11 @@ func NewCar(w *box2d.B2World) *Car {
 	body.CreateFixtureFromDef(&fixDef)
 
 	car := &Car{
-		bodyDef: box2d.NewB2BodyDef(),
+		bodyDef: bodyDef,
 		body:    body,
 
+		width:         width,
+		length:        length,
 		maxSteerAngle: 20,
 		maxSpeed:      60,
 		power:         60,
@@ -143,6 +145,7 @@ func (w *Wheel) getKillVelocityVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 	return box2d.MakeB2Vec2(sidewaysAxis.X*dotProd, sidewaysAxis.Y*dotProd)
 }
 
+// removes all sideways velocity from this wheel's velocity
 func (w *Wheel) killSidewaysVelocity(carBody *box2d.B2Body) {
 	kv := w.getKillVelocityVector(carBody)
 	w.body.SetLinearVelocity(kv)
@@ -216,9 +219,9 @@ func (c *Car) getSpeedKMH() float64 {
 
 // set speed in kilometers per hour
 func (c *Car) setSpeed(speed float64) {
-	vel := box2dToPixel(c.body.GetLinearVelocity()).Unit()
-	vel.Scaled((speed * 1000) / 3600)
-	c.body.SetLinearVelocity(pixelToBox2d(vel.Unit()))
+	vel := box2dToPixel(c.body.GetLinearVelocity())
+	vel.Unit().Scaled((speed * 1000) / 3600)
+	c.body.SetLinearVelocity(pixelToBox2d(vel))
 }
 
 func (c *Car) Update(dt float64) {
@@ -235,17 +238,16 @@ func (c *Car) Update(dt float64) {
 		c.wheelAngle = math.Min(math.Max(c.wheelAngle, 0)+incr, c.maxSteerAngle)
 	} else if c.SteerState == SteerLeft {
 		// decrement angle without going over max steer
-		c.wheelAngle = math.Max(math.Min(c.wheelAngle, 0)-incr, c.maxSteerAngle)
+		c.wheelAngle = math.Max(math.Min(c.wheelAngle, 0)-incr, -c.maxSteerAngle)
 	} else {
 		c.wheelAngle = 0
 	}
 
 	// update revolving wheels
 	for _, w := range c.wheels {
-		if !w.revolving {
-			continue
+		if w.revolving {
+			w.setAngle(c.wheelAngle)
 		}
-		w.setAngle(c.wheelAngle)
 	}
 
 	var baseVec box2d.B2Vec2
@@ -263,11 +265,10 @@ func (c *Car) Update(dt float64) {
 
 	fVec := box2d.MakeB2Vec2(c.power*baseVec.X, c.power*baseVec.Y)
 	for _, w := range c.wheels {
-		if !w.powered {
-			continue
+		if w.powered {
+			pos := w.body.GetWorldCenter()
+			w.body.ApplyForce(w.body.GetWorldVector(fVec), pos, true)
 		}
-		pos := w.body.GetWorldCenter()
-		w.body.ApplyForce(w.body.GetWorldVector(fVec), pos, true)
 	}
 
 	if c.getSpeedKMH() < 4 && c.AccelerateState == AccNone {
@@ -275,15 +276,29 @@ func (c *Car) Update(dt float64) {
 	}
 }
 
+const box2dScale = 1
+
 func (c *Car) Draw(win *pixelgl.Window) {
+	pos := box2dToPixel(c.body.GetPosition())
+	x := pos.X  / box2dScale * 2
+	y := pos.Y  / box2dScale * 2
+	x1 := (pos.X + c.width/2) / box2dScale * 2
+	y1 := (pos.Y + c.length/2) / box2dScale * 2
+	x2 := (pos.X - c.width/2) / box2dScale * 2
+	y2 := (pos.Y - c.length/2) / box2dScale * 2
+	rot := c.body.GetAngle() * (180 / math.Pi)
+
 	carBodySprite := imdraw.New(nil)
 	carBodySprite.Color = pixel.RGB(0.5, 0.5, 0.5)
 	carBodySprite.Push(
-		pixel.V(c.body.GetPosition().X, c.body.GetPosition().Y),
-		pixel.V(c.body.GetPosition().X, c.body.GetPosition().Y+50),
-		pixel.V(c.body.GetPosition().X+50, c.body.GetPosition().Y+50),
-		pixel.V(c.body.GetPosition().X+50, c.body.GetPosition().Y),
+		pixel.V(x1, y1),
+		pixel.V(x1, y2),
+		pixel.V(x2, y2),
+		pixel.V(x2, y1),
 	)
+
+	carBodySprite.SetMatrix(pixel.IM.Rotated(pixel.V(x, y), rot))
+
 	carBodySprite.Polygon(0)
 	carBodySprite.Draw(win)
 }

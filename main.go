@@ -35,7 +35,7 @@ func start() {
 
 	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
 
-	mainCar := car.NewCar(&world)
+	mainCar := car.NewCar(&world, 20, 40)
 
 	// limit update cycles FPS
 	frameRateLimiter := time.Tick(time.Second / 120)
@@ -43,7 +43,7 @@ func start() {
 
 	// main game loop
 	for !win.Closed() {
-		dt := time.Since(prevTimestamp).Seconds()
+		dt := float64(time.Since(prevTimestamp).Nanoseconds())/1000
 		prevTimestamp = time.Now().UTC()
 
 		// handle keyboard input
