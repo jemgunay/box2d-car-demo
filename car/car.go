@@ -38,20 +38,18 @@ type Car struct {
 	wheels []*Wheel
 }
 
-func NewCar(w *box2d.B2World, width, length float64) *Car {
-	x, y := 100.0, 100.0
-
+func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = box2d.MakeB2Vec2(x, y)
-	bodyDef.Angle = 0
+	bodyDef.Position = box2d.MakeB2Vec2(x/box2dScale, y/box2dScale)
+	bodyDef.Angle = 180
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(width/2, length/2)
+	shape.SetAsBox(width/2.0/box2dScale, length/2.0/box2dScale)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -108,16 +106,16 @@ func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
 	return carBody.GetLocalVector(carBody.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(w.x, w.y)))
 }
 
-/*func normaliseRadians(radians float64) float64 {
-	r := radians % float64(2*math.Pi)
-	if r<0 {
-		r+= 2*math.Pi
+func normaliseRadians(radians float64) float64 {
+	radians = math.Mod(radians, 2*math.Pi)
+	if radians < 0 {
+		radians += 2 * math.Pi
 	}
-	return r
-}*/
+	return radians
+}
 
 func rotate(vec box2d.B2Vec2, angle float64) box2d.B2Vec2 {
-	//angle=angles.normaliseRadians(angle);
+	angle = normaliseRadians(angle)
 	vX := vec.X*math.Cos(angle) - vec.Y*math.Sin(angle)
 	vY := vec.X*math.Sin(angle) - vec.Y*math.Cos(angle)
 
@@ -128,7 +126,7 @@ func rotate(vec box2d.B2Vec2, angle float64) box2d.B2Vec2 {
 func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 	//return vectors.rotate((this.getLocalVelocity()[1]>0) ? [0, 1]:[0, -1] , this.body.GetAngle()) ;
 	var dirVec box2d.B2Vec2
-	if w.getLocalVelocity(carBody).X > 0 {
+	if w.getLocalVelocity(carBody).Y > 0 {
 		dirVec = box2d.MakeB2Vec2(0, 1)
 	} else {
 		dirVec = box2d.MakeB2Vec2(1, 0)
@@ -160,14 +158,14 @@ func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, r
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(x, y))
+	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(x/box2dScale, y/box2dScale))
 	bodyDef.Angle = c.body.GetAngle()
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(width/2, length/2)
+	shape.SetAsBox(width/2.0/box2dScale, length/2.0/box2dScale)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -254,7 +252,7 @@ func (c *Car) Update(dt float64) {
 	if (c.AccelerateState == AccAccelerate) && (c.getSpeedKMH() < c.maxSpeed) {
 		baseVec = box2d.MakeB2Vec2(0, -1)
 	} else if c.AccelerateState == AccBrake {
-		if c.getLocalVelocity().X < 0 {
+		if c.getLocalVelocity().Y < 0 {
 			baseVec = box2d.MakeB2Vec2(0, 1.3)
 		} else {
 			baseVec = box2d.MakeB2Vec2(0, 0.7)
@@ -276,28 +274,27 @@ func (c *Car) Update(dt float64) {
 	}
 }
 
-const box2dScale = 1
+const box2dScale = 30.0
 
 func (c *Car) Draw(win *pixelgl.Window) {
 	pos := box2dToPixel(c.body.GetPosition())
-	x := pos.X  / box2dScale * 2
-	y := pos.Y  / box2dScale * 2
-	x1 := (pos.X + c.width/2) / box2dScale * 2
-	y1 := (pos.Y + c.length/2) / box2dScale * 2
-	x2 := (pos.X - c.width/2) / box2dScale * 2
-	y2 := (pos.Y - c.length/2) / box2dScale * 2
-	rot := c.body.GetAngle() * (180 / math.Pi)
+	rot := c.body.GetAngle()
+
+	x := pos.X * box2dScale
+	y := pos.Y * box2dScale
+	w := c.width
+	l := c.length
 
 	carBodySprite := imdraw.New(nil)
 	carBodySprite.Color = pixel.RGB(0.5, 0.5, 0.5)
 	carBodySprite.Push(
-		pixel.V(x1, y1),
-		pixel.V(x1, y2),
-		pixel.V(x2, y2),
-		pixel.V(x2, y1),
+		pixel.V(x, y),
+		pixel.V(x, y+l),
+		pixel.V(x+w, y+l),
+		pixel.V(x+w, y),
 	)
 
-	carBodySprite.SetMatrix(pixel.IM.Rotated(pixel.V(x, y), rot))
+	carBodySprite.SetMatrix(pixel.IM.Rotated(pixel.V(x+w/2, y+l/2), rot))
 
 	carBodySprite.Polygon(0)
 	carBodySprite.Draw(win)
@@ -309,4 +306,12 @@ func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
 
 func pixelToBox2d(vec pixel.Vec) box2d.B2Vec2 {
 	return box2d.MakeB2Vec2(vec.X, vec.Y)
+}
+
+func radToDeg(radians float64) float64 {
+	return radians * (180 / math.Pi)
+}
+
+func degToRad(degrees float64) float64 {
+	return degrees * (math.Pi / 180)
 }
