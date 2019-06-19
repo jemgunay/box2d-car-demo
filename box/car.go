@@ -2,6 +2,7 @@
 package box
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/ByteArena/box2d"
@@ -39,14 +40,11 @@ type Car struct {
 }
 
 func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
-	x += width / 2.0
-	y += length / 2.0
-
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 	bodyDef.Position = box2d.MakeB2Vec2(x/box2dScale, y/box2dScale)
-	bodyDef.Angle = 0
+	bodyDef.Angle = degToRad(180)
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
@@ -80,13 +78,13 @@ func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
 	}
 
 	// top left
-	car.AddWheel(w, -10, -12, 4, 8, true, true)
+	car.AddWheel(w, -1, -1.2, 0.4, 0.8, true, true)
 	// top right
-	car.AddWheel(w, 10, -12, 4, 8, true, true)
+	car.AddWheel(w, 1, -1.2, 0.4, 0.8, true, true)
 	// back left
-	car.AddWheel(w, -10, 12, 4, 8, false, false)
+	car.AddWheel(w, -1, 1.2, 0.4, 0.8, false, false)
 	// back right
-	car.AddWheel(w, 10, 12, 4, 8, false, false)
+	car.AddWheel(w, 1, 1.2, 0.4, 0.8, false, false)
 
 	return car
 }
@@ -101,8 +99,8 @@ type Wheel struct {
 	powered, revolving bool
 }
 
-func (w *Wheel) setAngle(angle float64) {
-	w.body.SetTransform(w.body.GetPosition(), angle)
+func (w *Wheel) setAngle(angle float64, carBody *box2d.B2Body) {
+	w.body.SetTransform(w.body.GetPosition(), carBody.GetAngle()+angle)
 }
 
 func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
@@ -110,9 +108,9 @@ func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
 }
 
 func normaliseRadians(radians float64) float64 {
-	radians = math.Mod(radians, 2*math.Pi)
+	radians = math.Mod(radians, 2.0*math.Pi)
 	if radians < 0 {
-		radians += 2 * math.Pi
+		radians += 2.0 * math.Pi
 	}
 	return radians
 }
@@ -120,7 +118,7 @@ func normaliseRadians(radians float64) float64 {
 func rotate(vec box2d.B2Vec2, angle float64) box2d.B2Vec2 {
 	angle = normaliseRadians(angle)
 	vX := vec.X*math.Cos(angle) - vec.Y*math.Sin(angle)
-	vY := vec.X*math.Sin(angle) - vec.Y*math.Cos(angle)
+	vY := vec.X*math.Sin(angle) + vec.Y*math.Cos(angle)
 
 	return box2d.MakeB2Vec2(vX, vY)
 }
@@ -132,7 +130,7 @@ func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 	if w.getLocalVelocity(carBody).Y > 0 {
 		dirVec = box2d.MakeB2Vec2(0, 1)
 	} else {
-		dirVec = box2d.MakeB2Vec2(1, 0)
+		dirVec = box2d.MakeB2Vec2(0, -1)
 	}
 	// https://github.com/GameJs/gamejs/blob/master/src/gamejs/math/vectors.js#L85
 	return rotate(dirVec, w.body.GetAngle())
@@ -156,8 +154,8 @@ func (w *Wheel) Draw(win *pixelgl.Window) {
 	pos := box2dToPixel(w.body.GetPosition())
 	rot := w.body.GetAngle()
 
-	x := pos.X * box2dScale
-	y := pos.Y * box2dScale
+	x := (pos.X * box2dScale) - w.width/2.0
+	y := (pos.Y * box2dScale) - w.length/2.0
 	width := w.width
 	length := w.length
 
@@ -182,9 +180,6 @@ func (c *Car) getLocalVelocity() box2d.B2Vec2 {
 }
 
 func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, revolving bool) {
-	x += width / 2.0
-	y += length / 2.0
-
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
@@ -248,7 +243,8 @@ func (c *Car) getSpeedKMH() float64 {
 // set speed in kilometers per hour
 func (c *Car) setSpeed(speed float64) {
 	vel := box2dToPixel(c.body.GetLinearVelocity())
-	vel.Unit().Scaled((speed * 1000.0) / 3600.0)
+	vel = vel.Unit()
+	vel = vel.Scaled((speed * 1000.0) / 3600.0)
 	c.body.SetLinearVelocity(pixelToBox2d(vel))
 }
 
@@ -260,11 +256,11 @@ func (c *Car) Update(dt float64) {
 
 	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
 	// in 200 ms
-	incr := (c.maxSteerAngle / 200) * dt
-	if c.SteerState == SteerRight {
+	incr := (c.maxSteerAngle / 200.0) * dt
+	if c.SteerState == SteerLeft {
 		// increment angle without going over max steer
 		c.wheelAngle = math.Min(math.Max(c.wheelAngle, 0)+incr, c.maxSteerAngle)
-	} else if c.SteerState == SteerLeft {
+	} else if c.SteerState == SteerRight {
 		// decrement angle without going over max steer
 		c.wheelAngle = math.Max(math.Min(c.wheelAngle, 0)-incr, -c.maxSteerAngle)
 	} else {
@@ -274,7 +270,7 @@ func (c *Car) Update(dt float64) {
 	// update revolving wheels
 	for _, w := range c.wheels {
 		if w.revolving {
-			w.setAngle(c.wheelAngle)
+			w.setAngle(degToRad(c.wheelAngle), c.body)
 		}
 	}
 
@@ -283,22 +279,26 @@ func (c *Car) Update(dt float64) {
 		baseVec = box2d.MakeB2Vec2(0, -1)
 	} else if c.AccelerateState == AccBrake {
 		if c.getLocalVelocity().Y < 0 {
+			// braking, but still moving forwards - increased force
 			baseVec = box2d.MakeB2Vec2(0, 1.3)
 		} else {
+			// going in reverse - less force
 			baseVec = box2d.MakeB2Vec2(0, 0.7)
 		}
 	} else {
 		baseVec = box2d.MakeB2Vec2(0, 0)
 	}
 
+	// apply force to each wheel
 	fVec := box2d.MakeB2Vec2(c.power*baseVec.X, c.power*baseVec.Y)
-	for _, w := range c.wheels {
-		if w.powered {
-			pos := w.body.GetWorldCenter()
-			w.body.ApplyForce(w.body.GetWorldVector(fVec), pos, true)
+	for _, wheel := range c.wheels {
+		if wheel.powered {
+			pos := wheel.body.GetWorldCenter()
+			wheel.body.ApplyForce(wheel.body.GetWorldVector(fVec), pos, true)
 		}
 	}
 
+	fmt.Println(c.getSpeedKMH())
 	if c.getSpeedKMH() < 4 && c.AccelerateState == AccNone {
 		c.setSpeed(0)
 	}
@@ -308,8 +308,8 @@ func (c *Car) Draw(win *pixelgl.Window) {
 	pos := box2dToPixel(c.body.GetPosition())
 	rot := c.body.GetAngle()
 
-	x := pos.X * box2dScale
-	y := pos.Y * box2dScale
+	x := (pos.X * box2dScale) - c.width/2.0
+	y := (pos.Y * box2dScale) - c.length/2.0
 	w := c.width
 	l := c.length
 

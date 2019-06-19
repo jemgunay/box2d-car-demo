@@ -33,11 +33,11 @@ func start() {
 		return
 	}
 
-	//world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
-	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, -9.8))
+	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
+	//world := box2d.MakeB2World(box2d.MakeB2Vec2(0, -9.8))
 
 	// create car
-	mainCar := box.NewCar(&world, win.Bounds().Center().X, win.Bounds().Center().Y, 20, 40)
+	mainCar := box.NewCar(&world, win.Bounds().Center().X, win.Bounds().Center().Y, 2, 4)
 
 	// create wall props
 	walls := []*box.Wall{
@@ -82,10 +82,10 @@ func start() {
 			mainCar.AccelerateState = box.AccNone
 		}
 
-		dt = 1.0 / 60.0
+		dt = (1.0 / 60.0) * 1000 // ms
 		mainCar.Update(dt)
 
-		world.Step(dt, 8, 3)
+		world.Step(dt/1000.0, 8, 3)
 		world.ClearForces()
 
 		// draw window
