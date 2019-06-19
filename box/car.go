@@ -1,4 +1,3 @@
-// Package box is a port of https://github.com/domasx2/gamejs-box2d-car-example
 package box
 
 import (
@@ -71,20 +70,26 @@ func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
 		length:        length,
 		maxSteerAngle: 20,
 		maxSpeed:      60,
-		power:         60,
+		power:         50,
 
 		SteerState:      SteerNone,
 		AccelerateState: AccNone,
 	}
 
+	// offset wheels to the ends of the car body
+	wheelDeltaY := (length * 0.6) / 2.0
+	// scale wheel size based on car body size
+	wheelWidth := width * 0.2
+	wheelLength := length * 0.2
+
 	// top left
-	car.AddWheel(w, -1, -1.2, 0.4, 0.8, true, true)
+	car.AddWheel(w, -width/2, -wheelDeltaY, wheelWidth, wheelLength, true, true)
 	// top right
-	car.AddWheel(w, 1, -1.2, 0.4, 0.8, true, true)
+	car.AddWheel(w, width/2, -wheelDeltaY, wheelWidth, wheelLength, true, true)
 	// back left
-	car.AddWheel(w, -1, 1.2, 0.4, 0.8, false, false)
+	car.AddWheel(w, -width/2, wheelDeltaY, wheelWidth, wheelLength, false, false)
 	// back right
-	car.AddWheel(w, 1, 1.2, 0.4, 0.8, false, false)
+	car.AddWheel(w, width/2, wheelDeltaY, wheelWidth, wheelLength, false, false)
 
 	return car
 }
@@ -100,7 +105,7 @@ type Wheel struct {
 }
 
 func (w *Wheel) setAngle(angle float64, carBody *box2d.B2Body) {
-	w.body.SetTransform(w.body.GetPosition(), carBody.GetAngle()+angle)
+	w.body.SetTransform(w.body.GetPosition(), carBody.GetAngle()-angle)
 }
 
 func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
@@ -257,10 +262,10 @@ func (c *Car) Update(dt float64) {
 	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
 	// in 200 ms
 	incr := (c.maxSteerAngle / 200.0) * dt
-	if c.SteerState == SteerLeft {
+	if c.SteerState == SteerRight {
 		// increment angle without going over max steer
 		c.wheelAngle = math.Min(math.Max(c.wheelAngle, 0)+incr, c.maxSteerAngle)
-	} else if c.SteerState == SteerRight {
+	} else if c.SteerState == SteerLeft {
 		// decrement angle without going over max steer
 		c.wheelAngle = math.Max(math.Min(c.wheelAngle, 0)-incr, -c.maxSteerAngle)
 	} else {
@@ -290,7 +295,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// apply force to each wheel
-	fVec := box2d.MakeB2Vec2(c.power*baseVec.X, c.power*baseVec.Y)
+	fVec := box2d.MakeB2Vec2(c.power*baseVec.X*1000, c.power*baseVec.Y*1000)
 	for _, wheel := range c.wheels {
 		if wheel.powered {
 			pos := wheel.body.GetWorldCenter()

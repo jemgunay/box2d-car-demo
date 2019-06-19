@@ -97,6 +97,8 @@ func start() {
 			crate.Draw(win)
 		}
 		mainCar.Draw(win)
+		camMatrix := pixel.IM.Scaled(win.Bounds().Center(), 16)
+		win.SetMatrix(camMatrix)
 		win.Update()
 
 		//<-frameRateLimiter

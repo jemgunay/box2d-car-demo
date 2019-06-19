@@ -1,3 +1,4 @@
+// Package box is a port of https://github.com/domasx2/gamejs-box2d-car-example
 package box
 
 import (
@@ -8,6 +9,8 @@ import (
 )
 
 const box2dScale = 1.0 / 30.0
+
+const box2dScale2 = 30.0
 
 func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
 	return pixel.V(vec.X, vec.Y)
