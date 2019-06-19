@@ -1,6 +1,7 @@
 package box
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
@@ -48,7 +49,7 @@ func NewCar(w *box2d.B2World, pos, size pixel.Vec) *Car {
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 	bodyDef.Position = box2d.MakeB2Vec2(pos.X*worldToBox2d, pos.Y*worldToBox2d)
-	bodyDef.Angle = degToRad(180)
+	bodyDef.Angle = 0
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
@@ -118,13 +119,12 @@ func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
 }
 
 // returns a world unit vector pointing in the direction this wheel is moving
-func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
-	//return vectors.rotate((this.getLocalVelocity()[1]>0) ? [0, 1]:[0, -1] , this.body.GetAngle()) ;
-	var dirVec box2d.B2Vec2
-	if w.getLocalVelocity(carBody).Y > 0 {
-		dirVec = box2d.MakeB2Vec2(0, 1)
+func (w *Wheel) getDirectionVector() pixel.Vec {
+	var dirVec pixel.Vec
+	if w.getLocalVelocity(w.parentCar.body).Y > 0 {
+		dirVec = pixel.V(0, 1)
 	} else {
-		dirVec = box2d.MakeB2Vec2(0, -1)
+		dirVec = pixel.V(0, -1)
 	}
 	// https://github.com/GameJs/gamejs/blob/master/src/gamejs/math/vectors.js#L85
 	return rotate(dirVec, w.body.GetAngle())
@@ -132,10 +132,9 @@ func (w *Wheel) getDirectionVector(carBody *box2d.B2Body) box2d.B2Vec2 {
 
 // substracts sideways velocity from this wheel's velocity vector and returns the remaining front-facing velocity vector.
 func (w *Wheel) getKillVelocityVector() box2d.B2Vec2 {
-	vel := w.body.GetLinearVelocity()
-	sidewaysAxis := box2dToPixel(w.getDirectionVector(w.parentCar.body))
-	dotProd := box2dToPixel(vel).Dot(sidewaysAxis)
-	return box2d.MakeB2Vec2(sidewaysAxis.X*dotProd, sidewaysAxis.Y*dotProd)
+	sidewaysAxis := w.getDirectionVector()
+	dotProd := box2dToPixel(w.body.GetLinearVelocity()).Dot(sidewaysAxis)
+	return pixelToBox2d(sidewaysAxis.Scaled(dotProd))
 }
 
 // removes all sideways velocity from this wheel's velocity
@@ -169,11 +168,11 @@ func (c *Car) getLocalVelocity() box2d.B2Vec2 {
 	return c.body.GetLocalVector(c.body.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(0, 0)))
 }
 
-func (c *Car) AddWheel(world *box2d.B2World, pos, size pixel.Vec, powered, revolving bool) {
+func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powered, revolving bool) {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(pos.X*worldToBox2d, pos.Y*worldToBox2d))
+	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(relativePos.X*worldToBox2d, relativePos.Y*worldToBox2d))
 	bodyDef.Angle = c.body.GetAngle()
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
@@ -213,7 +212,7 @@ func (c *Car) AddWheel(world *box2d.B2World, pos, size pixel.Vec, powered, revol
 		bodyDef: box2d.NewB2BodyDef(),
 		body:    body,
 
-		pos:       pos,
+		pos:       relativePos,
 		size:      size,
 		colour:    pixel.RGB(0.3, 0.3, 0.3),
 		powered:   powered,
@@ -256,35 +255,38 @@ func (c *Car) Update(dt float64) {
 		c.wheelAngle = 0
 	}
 
-	var baseVec box2d.B2Vec2
+	var baseVec pixel.Vec
 	// if accelerator is pressed down and speed limit has not been reached, go forwards
 	if (c.AccelerateState == AccAccelerate) && (c.getSpeedKMH() < c.maxSpeed) {
-		baseVec = box2d.MakeB2Vec2(0, -1)
+		baseVec = pixel.V(0, -1)
 	} else if c.AccelerateState == AccBrake {
+		fmt.Println(c.getLocalVelocity().Y)
 		if c.getLocalVelocity().Y < 0 {
 			// braking, but still moving forwards - increased force
-			baseVec = box2d.MakeB2Vec2(0, 1.3)
+			baseVec = pixel.V(0, 1.3)
 		} else {
 			// going in reverse - less force
-			baseVec = box2d.MakeB2Vec2(0, 0.7)
+			baseVec = pixel.V(0, 0.7)
 		}
 	}
 
-	fVec := box2d.MakeB2Vec2(c.power*baseVec.X, c.power*baseVec.Y)
+	// multiply by engine power, which gives us a force vector relative to the wheel
+	forceVec := pixelToBox2d(baseVec.Scaled(c.power))
+
 	for _, wheel := range c.wheels {
 		// update revolving wheels
 		if wheel.revolving {
 			wheel.setAngle(degToRad(c.wheelAngle))
 		}
-		// apply force to each wheel
+		// apply force to each powered wheel
 		if wheel.powered {
 			pos := wheel.body.GetWorldCenter()
-			wheel.body.ApplyForce(wheel.body.GetWorldVector(fVec), pos, true)
+			wheel.body.ApplyForce(wheel.body.GetWorldVector(forceVec), pos, true)
 		}
 	}
 
 	// if going very slow, stop in order to prevent endless sliding
-	if c.getSpeedKMH() < 4 && c.AccelerateState == AccNone {
+	if c.getSpeedKMH() < 1 && c.AccelerateState == AccNone {
 		c.setSpeed(0)
 	}
 }

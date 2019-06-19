@@ -54,7 +54,7 @@ func (w *Crate) Draw(win *pixelgl.Window) {
 	length := w.length
 
 	carBodySprite := imdraw.New(nil)
-	carBodySprite.Color = pixel.RGB(210/255, 105/255, 30/255)
+	carBodySprite.Color = pixel.RGB(210.0/255.0, 105.0/255.0, 30.0/255.0)
 	carBodySprite.Push(
 		pixel.V(x, y),
 		pixel.V(x, y+length),
