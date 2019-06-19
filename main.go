@@ -8,7 +8,7 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/jemgunay/box2d-car-test/car"
+	"github.com/jemgunay/box2d-car-test/box"
 )
 
 func main() {
@@ -33,17 +33,32 @@ func start() {
 		return
 	}
 
-	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
+	//world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
+	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, -9.8))
 
-	mainCar := car.NewCar(&world, 100, 100,2, 4)
+	// create car
+	mainCar := box.NewCar(&world, win.Bounds().Center().X, win.Bounds().Center().Y, 20, 40)
+
+	// create wall props
+	walls := []*box.Wall{
+		box.NewWall(&world, win.Bounds().Center().X, win.Bounds().Min.Y+100, win.Bounds().W(), 50),
+		box.NewWall(&world, win.Bounds().Min.X+300, win.Bounds().Center().Y+100, 50, win.Bounds().H()),
+		box.NewWall(&world, win.Bounds().Max.X-300, win.Bounds().Center().Y+100, 50, win.Bounds().H()),
+	}
+
+	crates := []*box.Crate{
+		box.NewCrate(&world, win.Bounds().Center().X, win.Bounds().Min.Y+200, 30, 30),
+		box.NewCrate(&world, win.Bounds().Center().X-15, win.Bounds().Min.Y+250, 30, 30),
+		box.NewCrate(&world, win.Bounds().Center().X-30, win.Bounds().Min.Y+300, 30, 30),
+	}
 
 	// limit update cycles FPS
-	frameRateLimiter := time.Tick(time.Second / 120)
+	//frameRateLimiter := time.Tick(time.Second / 120)
 	prevTimestamp := time.Now().UTC()
 
 	// main game loop
 	for !win.Closed() {
-		dt := float64(time.Since(prevTimestamp).Nanoseconds())/1e6
+		dt := float64(time.Since(prevTimestamp).Nanoseconds())
 		prevTimestamp = time.Now().UTC()
 
 		// handle keyboard input
@@ -52,31 +67,38 @@ func start() {
 		}
 
 		if win.Pressed(pixelgl.KeyA) {
-			mainCar.SteerState = car.SteerLeft
+			mainCar.SteerState = box.SteerLeft
 		} else if win.Pressed(pixelgl.KeyD) {
-			mainCar.SteerState = car.SteerRight
+			mainCar.SteerState = box.SteerRight
 		} else {
-			mainCar.SteerState = car.SteerNone
+			mainCar.SteerState = box.SteerNone
 		}
 
 		if win.Pressed(pixelgl.KeyS) {
-			mainCar.AccelerateState = car.AccBrake
+			mainCar.AccelerateState = box.AccBrake
 		} else if win.Pressed(pixelgl.KeyW) {
-			mainCar.AccelerateState = car.AccAccelerate
+			mainCar.AccelerateState = box.AccAccelerate
 		} else {
-			mainCar.AccelerateState = car.AccNone
+			mainCar.AccelerateState = box.AccNone
 		}
 
+		dt = 1.0 / 60.0
 		mainCar.Update(dt)
 
-		world.Step(dt/10000, 8, 3)
+		world.Step(dt, 8, 3)
 		world.ClearForces()
 
 		// draw window
 		win.Clear(color.White)
+		for _, wall := range walls {
+			wall.Draw(win)
+		}
+		for _, crate := range crates {
+			crate.Draw(win)
+		}
 		mainCar.Draw(win)
 		win.Update()
 
-		<-frameRateLimiter
+		//<-frameRateLimiter
 	}
 }

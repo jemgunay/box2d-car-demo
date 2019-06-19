@@ -1,5 +1,5 @@
-// Package car is a port of https://github.com/domasx2/gamejs-box2d-car-example
-package car
+// Package box is a port of https://github.com/domasx2/gamejs-box2d-car-example
+package box
 
 import (
 	"math"
@@ -39,11 +39,14 @@ type Car struct {
 }
 
 func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
+	x += width / 2.0
+	y += length / 2.0
+
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 	bodyDef.Position = box2d.MakeB2Vec2(x/box2dScale, y/box2dScale)
-	bodyDef.Angle = 180
+	bodyDef.Angle = 0
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
@@ -77,13 +80,13 @@ func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
 	}
 
 	// top left
-	car.AddWheel(w, -1, -1.2, 0.4, 0.8, true, true)
+	car.AddWheel(w, -10, -12, 4, 8, true, true)
 	// top right
-	car.AddWheel(w, 1, -1.2, 0.4, 0.8, true, true)
+	car.AddWheel(w, 10, -12, 4, 8, true, true)
 	// back left
-	car.AddWheel(w, -1, 1.2, 0.4, 0.8, false, false)
+	car.AddWheel(w, -10, 12, 4, 8, false, false)
 	// back right
-	car.AddWheel(w, 1, 1.2, 0.4, 0.8, false, false)
+	car.AddWheel(w, 10, 12, 4, 8, false, false)
 
 	return car
 }
@@ -149,12 +152,39 @@ func (w *Wheel) killSidewaysVelocity(carBody *box2d.B2Body) {
 	w.body.SetLinearVelocity(kv)
 }
 
+func (w *Wheel) Draw(win *pixelgl.Window) {
+	pos := box2dToPixel(w.body.GetPosition())
+	rot := w.body.GetAngle()
+
+	x := pos.X * box2dScale
+	y := pos.Y * box2dScale
+	width := w.width
+	length := w.length
+
+	carBodySprite := imdraw.New(nil)
+	carBodySprite.Color = pixel.RGB(0.1, 0.5, 0.8)
+	carBodySprite.Push(
+		pixel.V(x, y),
+		pixel.V(x, y+length),
+		pixel.V(x+width, y+length),
+		pixel.V(x+width, y),
+	)
+
+	carBodySprite.SetMatrix(pixel.IM.Rotated(pixel.V(x+(width/2.0), y+(length/2.0)), rot))
+
+	carBodySprite.Polygon(0)
+	carBodySprite.Draw(win)
+}
+
 // returns car's velocity vector relative to the car
 func (c *Car) getLocalVelocity() box2d.B2Vec2 {
 	return c.body.GetLocalVector(c.body.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(0, 0)))
 }
 
 func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, revolving bool) {
+	x += width / 2.0
+	y += length / 2.0
+
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
@@ -212,13 +242,13 @@ func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, r
 func (c *Car) getSpeedKMH() float64 {
 	velocity := c.body.GetLinearVelocity()
 	len := velocity.Length()
-	return (len / 1000) * 3600
+	return (len / 1000.0) * 3600.0
 }
 
 // set speed in kilometers per hour
 func (c *Car) setSpeed(speed float64) {
 	vel := box2dToPixel(c.body.GetLinearVelocity())
-	vel.Unit().Scaled((speed * 1000) / 3600)
+	vel.Unit().Scaled((speed * 1000.0) / 3600.0)
 	c.body.SetLinearVelocity(pixelToBox2d(vel))
 }
 
@@ -274,8 +304,6 @@ func (c *Car) Update(dt float64) {
 	}
 }
 
-const box2dScale = 30.0
-
 func (c *Car) Draw(win *pixelgl.Window) {
 	pos := box2dToPixel(c.body.GetPosition())
 	rot := c.body.GetAngle()
@@ -294,24 +322,13 @@ func (c *Car) Draw(win *pixelgl.Window) {
 		pixel.V(x+w, y),
 	)
 
-	carBodySprite.SetMatrix(pixel.IM.Rotated(pixel.V(x+w/2, y+l/2), rot))
+	carBodySprite.SetMatrix(pixel.IM.Rotated(pixel.V(x+(w/2.0), y+(l/2.0)), rot))
 
 	carBodySprite.Polygon(0)
 	carBodySprite.Draw(win)
-}
 
-func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
-	return pixel.V(vec.X, vec.Y)
-}
-
-func pixelToBox2d(vec pixel.Vec) box2d.B2Vec2 {
-	return box2d.MakeB2Vec2(vec.X, vec.Y)
-}
-
-func radToDeg(radians float64) float64 {
-	return radians * (180 / math.Pi)
-}
-
-func degToRad(degrees float64) float64 {
-	return degrees * (math.Pi / 180)
+	// draw wheels
+	for _, wheel := range c.wheels {
+		wheel.Draw(win)
+	}
 }
