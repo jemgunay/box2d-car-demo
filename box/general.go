@@ -8,9 +8,11 @@ import (
 	"github.com/faiface/pixel"
 )
 
-const box2dScale = 1.0 / 30.0
+const (
+	worldToBox2d = 1.0 / 30.0
+	box2dToWorld = 1.0 / worldToBox2d
+)
 
-const box2dScale2 = 30.0
 
 func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
 	return pixel.V(vec.X, vec.Y)

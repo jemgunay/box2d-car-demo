@@ -37,28 +37,29 @@ func start() {
 	//world := box2d.MakeB2World(box2d.MakeB2Vec2(0, -9.8))
 
 	// create car
-	mainCar := box.NewCar(&world, win.Bounds().Center().X, win.Bounds().Center().Y, 2, 4)
+	mainCar := box.NewCar(&world, win.Bounds().Center().X, win.Bounds().Center().Y, 40, 80)
 
 	// create wall props
 	walls := []*box.Wall{
-		box.NewWall(&world, win.Bounds().Center().X, win.Bounds().Min.Y+100, win.Bounds().W(), 50),
-		box.NewWall(&world, win.Bounds().Min.X+300, win.Bounds().Center().Y+100, 50, win.Bounds().H()),
-		box.NewWall(&world, win.Bounds().Max.X-300, win.Bounds().Center().Y+100, 50, win.Bounds().H()),
+		box.NewWall(&world, win.Bounds().Center().X, win.Bounds().Min.Y, win.Bounds().W(), 30),
+		box.NewWall(&world, win.Bounds().Center().X, win.Bounds().Max.Y, win.Bounds().W(), 30),
+		box.NewWall(&world, win.Bounds().Min.X, win.Bounds().Center().Y, 30, win.Bounds().H()),
+		box.NewWall(&world, win.Bounds().Max.X, win.Bounds().Center().Y, 30, win.Bounds().H()),
 	}
 
 	crates := []*box.Crate{
-		box.NewCrate(&world, win.Bounds().Center().X, win.Bounds().Min.Y+200, 30, 30),
-		box.NewCrate(&world, win.Bounds().Center().X-15, win.Bounds().Min.Y+250, 30, 30),
-		box.NewCrate(&world, win.Bounds().Center().X-30, win.Bounds().Min.Y+300, 30, 30),
+		box.NewCrate(&world, win.Bounds().Center().X, win.Bounds().Min.Y+200, 50, 50),
+		box.NewCrate(&world, win.Bounds().Center().X-15, win.Bounds().Min.Y+250, 50, 50),
+		box.NewCrate(&world, win.Bounds().Center().X-30, win.Bounds().Min.Y+300, 50, 50),
 	}
 
 	// limit update cycles FPS
-	//frameRateLimiter := time.Tick(time.Second / 120)
+	frameRateLimiter := time.Tick(time.Second / 120)
 	prevTimestamp := time.Now().UTC()
 
 	// main game loop
 	for !win.Closed() {
-		dt := float64(time.Since(prevTimestamp).Nanoseconds())
+		dt := float64(time.Since(prevTimestamp).Nanoseconds())/1e6
 		prevTimestamp = time.Now().UTC()
 
 		// handle keyboard input
@@ -82,7 +83,7 @@ func start() {
 			mainCar.AccelerateState = box.AccNone
 		}
 
-		dt = (1.0 / 60.0) * 1000 // ms
+		//dt = (1.0 / 60.0) * 1000 // ms
 		mainCar.Update(dt)
 
 		world.Step(dt/1000.0, 8, 3)
@@ -97,10 +98,10 @@ func start() {
 			crate.Draw(win)
 		}
 		mainCar.Draw(win)
-		camMatrix := pixel.IM.Scaled(win.Bounds().Center(), 16)
+		camMatrix := pixel.IM.Scaled(win.Bounds().Center(), 1)
 		win.SetMatrix(camMatrix)
 		win.Update()
 
-		//<-frameRateLimiter
+		<-frameRateLimiter
 	}
 }

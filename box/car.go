@@ -10,14 +10,18 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 )
 
-type state uint
+type (
+	steerState uint
+	accState   uint
+)
 
 const (
-	SteerNone state = iota
+	SteerNone steerState = iota
 	SteerLeft
 	SteerRight
-
-	AccNone state = iota
+)
+const (
+	AccNone accState = iota
 	AccAccelerate
 	AccBrake
 )
@@ -26,8 +30,8 @@ type Car struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
 
-	SteerState      state
-	AccelerateState state
+	SteerState      steerState
+	AccelerateState accState
 
 	width, length float64
 	maxSteerAngle float64
@@ -42,14 +46,14 @@ func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = box2d.MakeB2Vec2(x/box2dScale, y/box2dScale)
+	bodyDef.Position = box2d.MakeB2Vec2(x*worldToBox2d, y*worldToBox2d)
 	bodyDef.Angle = degToRad(180)
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(width/2.0/box2dScale, length/2.0/box2dScale)
+	shape.SetAsBox(width*0.5*worldToBox2d, length*0.5*worldToBox2d)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -69,8 +73,8 @@ func NewCar(w *box2d.B2World, x, y, width, length float64) *Car {
 		width:         width,
 		length:        length,
 		maxSteerAngle: 20,
-		maxSpeed:      60,
-		power:         50,
+		maxSpeed:      20,
+		power:         20,
 
 		SteerState:      SteerNone,
 		AccelerateState: AccNone,
@@ -159,8 +163,8 @@ func (w *Wheel) Draw(win *pixelgl.Window) {
 	pos := box2dToPixel(w.body.GetPosition())
 	rot := w.body.GetAngle()
 
-	x := (pos.X * box2dScale) - w.width/2.0
-	y := (pos.Y * box2dScale) - w.length/2.0
+	x := (pos.X * box2dToWorld) - w.width/2.0
+	y := (pos.Y * box2dToWorld) - w.length/2.0
 	width := w.width
 	length := w.length
 
@@ -188,14 +192,14 @@ func (c *Car) AddWheel(w *box2d.B2World, x, y, width, length float64, powered, r
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(x/box2dScale, y/box2dScale))
+	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(x*worldToBox2d, y*worldToBox2d))
 	bodyDef.Angle = c.body.GetAngle()
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(width/2.0/box2dScale, length/2.0/box2dScale)
+	shape.SetAsBox(width*0.5*worldToBox2d, length*0.5*worldToBox2d)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -280,6 +284,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	var baseVec box2d.B2Vec2
+	// if accelerator is pressed down and speed limit has not been reached, go forwards
 	if (c.AccelerateState == AccAccelerate) && (c.getSpeedKMH() < c.maxSpeed) {
 		baseVec = box2d.MakeB2Vec2(0, -1)
 	} else if c.AccelerateState == AccBrake {
@@ -290,12 +295,10 @@ func (c *Car) Update(dt float64) {
 			// going in reverse - less force
 			baseVec = box2d.MakeB2Vec2(0, 0.7)
 		}
-	} else {
-		baseVec = box2d.MakeB2Vec2(0, 0)
 	}
 
 	// apply force to each wheel
-	fVec := box2d.MakeB2Vec2(c.power*baseVec.X*1000, c.power*baseVec.Y*1000)
+	fVec := box2d.MakeB2Vec2(c.power*baseVec.X, c.power*baseVec.Y)
 	for _, wheel := range c.wheels {
 		if wheel.powered {
 			pos := wheel.body.GetWorldCenter()
@@ -313,8 +316,8 @@ func (c *Car) Draw(win *pixelgl.Window) {
 	pos := box2dToPixel(c.body.GetPosition())
 	rot := c.body.GetAngle()
 
-	x := (pos.X * box2dScale) - c.width/2.0
-	y := (pos.Y * box2dScale) - c.length/2.0
+	x := (pos.X * box2dToWorld) - c.width/2.0
+	y := (pos.Y * box2dToWorld) - c.length/2.0
 	w := c.width
 	l := c.length
 
