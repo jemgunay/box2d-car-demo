@@ -37,7 +37,7 @@ func start() {
 	//world := box2d.MakeB2World(box2d.MakeB2Vec2(0, -9.8))
 
 	// create car
-	mainCar := box.NewCar(&world, win.Bounds().Center().X, win.Bounds().Center().Y, 40, 80)
+	mainCar := box.NewCar(&world, win.Bounds().Center(), pixel.V(40, 80))
 
 	// create wall props
 	walls := []*box.Wall{
@@ -49,8 +49,8 @@ func start() {
 
 	crates := []*box.Crate{
 		box.NewCrate(&world, win.Bounds().Center().X, win.Bounds().Min.Y+200, 50, 50),
-		box.NewCrate(&world, win.Bounds().Center().X-15, win.Bounds().Min.Y+250, 50, 50),
-		box.NewCrate(&world, win.Bounds().Center().X-30, win.Bounds().Min.Y+300, 50, 50),
+		box.NewCrate(&world, win.Bounds().Center().X-100, win.Bounds().Min.Y+250, 50, 50),
+		box.NewCrate(&world, win.Bounds().Center().X+100, win.Bounds().Min.Y+300, 50, 50),
 	}
 
 	// limit update cycles FPS
@@ -83,7 +83,6 @@ func start() {
 			mainCar.AccelerateState = box.AccNone
 		}
 
-		//dt = (1.0 / 60.0) * 1000 // ms
 		mainCar.Update(dt)
 
 		world.Step(dt/1000.0, 8, 3)

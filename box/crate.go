@@ -19,7 +19,6 @@ func NewCrate(w *box2d.B2World, x, y, width, length float64) *Crate {
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 	bodyDef.Position = box2d.MakeB2Vec2(x*worldToBox2d, y*worldToBox2d)
-	bodyDef.Angle = 0
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
@@ -55,7 +54,7 @@ func (w *Crate) Draw(win *pixelgl.Window) {
 	length := w.length
 
 	carBodySprite := imdraw.New(nil)
-	carBodySprite.Color = pixel.RGB(0.8, 0.8, 0.8)
+	carBodySprite.Color = pixel.RGB(210/255, 105/255, 30/255)
 	carBodySprite.Push(
 		pixel.V(x, y),
 		pixel.V(x, y+length),
