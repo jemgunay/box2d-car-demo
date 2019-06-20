@@ -9,21 +9,24 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 )
 
-type (
-	steerState uint
-	accState   uint
-)
+type steerState uint
 
+// The possible vehicle steering states.
 const (
 	SteerNone steerState = iota
 	SteerLeft
 	SteerRight
 )
+
+type accState uint
+
+// The possible acceleration direction states.
 const (
 	AccForwards accState = iota
 	AccReverse
 )
 
+// Car is the base for a drivable physics-based car.
 type Car struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
@@ -43,6 +46,7 @@ type Car struct {
 	wheels []*Wheel
 }
 
+// NewCar create sand initialises a new car.
 func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
@@ -85,14 +89,14 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	// scale wheel size relative to car body size
 	wheelSize := size.Scaled(0.2)
 
+	// bottom left
+	car.AddWheel(world, pixel.V(-size.X/2.0, -wheelDeltaY), wheelSize, false, fixedRevolve)
+	// bottom right
+	car.AddWheel(world, pixel.V(size.X/2.0, -wheelDeltaY), wheelSize, false, fixedRevolve)
 	// top left
-	car.AddWheel(world, pixel.V(-size.X/2.0, -wheelDeltaY), wheelSize, false, false)
+	car.AddWheel(world, pixel.V(-size.X/2.0, wheelDeltaY), wheelSize, true, standardRevolve)
 	// top right
-	car.AddWheel(world, pixel.V(size.X/2.0, -wheelDeltaY), wheelSize, false, false)
-	// back left
-	car.AddWheel(world, pixel.V(-size.X/2.0, wheelDeltaY), wheelSize, true, true)
-	// back right
-	car.AddWheel(world, pixel.V(size.X/2.0, wheelDeltaY), wheelSize, true, true)
+	car.AddWheel(world, pixel.V(size.X/2.0, wheelDeltaY), wheelSize, true, standardRevolve)
 
 	return car
 }
@@ -102,7 +106,8 @@ func (c *Car) getLocalVelocity() box2d.B2Vec2 {
 	return c.body.GetLocalVector(c.body.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(0, 0)))
 }
 
-func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powered, revolving bool) {
+// AddWheel creates a wheel and joins it to the parent car.
+func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powered bool, revolveType wheelRevolveType) {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
@@ -126,17 +131,17 @@ func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powere
 	body := world.CreateBody(bodyDef)
 	body.CreateFixtureFromDef(&fixDef)
 
-	if revolving {
-		jointDef := box2d.MakeB2RevoluteJointDef()
-		jointDef.Initialize(c.body, body, body.GetWorldCenter())
-		jointDef.EnableMotor = true
-		world.CreateJoint(&jointDef)
-	} else {
+	if revolveType == fixedRevolve {
 		jointDef := box2d.MakeB2PrismaticJointDef()
 		jointDef.Initialize(c.body, body, body.GetWorldCenter(), box2d.MakeB2Vec2(1, 0))
 		jointDef.EnableLimit = true
 		jointDef.LowerTranslation = 0
 		jointDef.UpperTranslation = 0
+		world.CreateJoint(&jointDef)
+	} else {
+		jointDef := box2d.MakeB2RevoluteJointDef()
+		jointDef.Initialize(c.body, body, body.GetWorldCenter())
+		jointDef.EnableMotor = true
 		world.CreateJoint(&jointDef)
 	}
 
@@ -146,11 +151,11 @@ func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powere
 		bodyDef: box2d.NewB2BodyDef(),
 		body:    body,
 
-		pos:       relativePos,
-		size:      size,
-		colour:    pixel.RGB(0.3, 0.3, 0.3),
-		powered:   powered,
-		revolving: revolving,
+		pos:         relativePos,
+		size:        size,
+		colour:      pixel.RGB(0.3, 0.3, 0.3),
+		powered:     powered,
+		revolveType: revolveType,
 	}
 
 	c.wheels = append(c.wheels, wheel)
@@ -213,8 +218,10 @@ func (c *Car) Update(dt float64) {
 
 	for _, wheel := range c.wheels {
 		// update revolving wheels
-		if wheel.revolving {
+		if wheel.revolveType == standardRevolve {
 			wheel.setAngle(degToRad(c.wheelAngle))
+		} else if wheel.revolveType == inverseRevolve {
+			wheel.setAngle(degToRad(-c.wheelAngle))
 		}
 		// apply force to each powered wheel
 		if wheel.powered {
@@ -238,15 +245,26 @@ func (c *Car) Draw(win *pixelgl.Window) {
 	}
 }
 
+type wheelRevolveType uint
+
+// The wheel rotation direction states.
+const (
+	fixedRevolve wheelRevolveType = iota
+	standardRevolve
+	inverseRevolve
+)
+
+// Wheel is a physics vehicle wheel.
 type Wheel struct {
 	parentCar *Car
 
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
 
-	pos, size          pixel.Vec
-	colour             color.Color
-	powered, revolving bool
+	pos, size   pixel.Vec
+	colour      color.Color
+	powered     bool
+	revolveType wheelRevolveType
 }
 
 func (w *Wheel) setAngle(angle float64) {

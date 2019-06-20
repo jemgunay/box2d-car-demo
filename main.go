@@ -67,12 +67,12 @@ func start() {
 			return
 		}
 
+		mainCar.SteerState = box.SteerNone
 		if win.Pressed(pixelgl.KeyA) {
 			mainCar.SteerState = box.SteerLeft
-		} else if win.Pressed(pixelgl.KeyD) {
+		}
+		if win.Pressed(pixelgl.KeyD) {
 			mainCar.SteerState = box.SteerRight
-		} else {
-			mainCar.SteerState = box.SteerNone
 		}
 
 		if win.JustPressed(pixelgl.KeyQ) {
