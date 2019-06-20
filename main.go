@@ -8,7 +8,7 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/jemgunay/box2d-car-test/box"
+	"github.com/jemgunay/box2d-car-demo/box"
 )
 
 func main() {
