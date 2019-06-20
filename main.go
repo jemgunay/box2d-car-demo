@@ -48,9 +48,12 @@ func start() {
 	}
 
 	crates := []*box.Crate{
-		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+200), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X-100, win.Bounds().Min.Y+250), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X+100, win.Bounds().Min.Y+300), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+250), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X-30, win.Bounds().Min.Y+190), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X+30, win.Bounds().Min.Y+190), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X-60, win.Bounds().Min.Y+130), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X+60, win.Bounds().Min.Y+130), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+130), pixel.V(50, 50)),
 	}
 
 	// limit update cycles FPS
