@@ -47,13 +47,14 @@ func start() {
 		box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
 	}
 
+	crateSize := pixel.V(50, 50)
 	crates := []*box.Crate{
-		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+250), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X-30, win.Bounds().Min.Y+190), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X+30, win.Bounds().Min.Y+190), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X-60, win.Bounds().Min.Y+130), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X+60, win.Bounds().Min.Y+130), pixel.V(50, 50)),
-		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+130), pixel.V(50, 50)),
+		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+250), crateSize),
+		box.NewCrate(&world, pixel.V(winCentre.X-30, win.Bounds().Min.Y+190), crateSize),
+		box.NewCrate(&world, pixel.V(winCentre.X+30, win.Bounds().Min.Y+190), crateSize),
+		box.NewCrate(&world, pixel.V(winCentre.X-60, win.Bounds().Min.Y+130), crateSize),
+		box.NewCrate(&world, pixel.V(winCentre.X+60, win.Bounds().Min.Y+130), crateSize),
+		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+130), crateSize),
 	}
 
 	// limit update cycles FPS
