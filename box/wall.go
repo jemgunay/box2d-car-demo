@@ -8,6 +8,7 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 )
 
+// Wall is an immovable physics-based wall.
 type Wall struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
@@ -16,6 +17,7 @@ type Wall struct {
 	colour color.Color
 }
 
+// NewWall creates and initialises a new wall.
 func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
@@ -45,6 +47,7 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 	}
 }
 
+// Draw draws the wall.
 func (w *Wall) Draw(win *pixelgl.Window) {
 	drawRectBody(win, box2dToPixel(w.body.GetPosition()), w.size, w.body.GetAngle(), w.colour)
 }

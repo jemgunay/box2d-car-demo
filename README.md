@@ -1,4 +1,4 @@
-# Go box2D Car Demo
+# Go Box2D Car Demo
 
 A port of a top-down car demo written in JS (http://domasx2.github.io/gamejs-box2d-car-example/) to Go, using the pixel game package and ByteArena's Go box2D port.
 

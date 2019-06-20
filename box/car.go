@@ -46,7 +46,7 @@ type Car struct {
 	wheels []*Wheel
 }
 
-// NewCar create sand initialises a new car.
+// NewCar creates and initialises a new car.
 func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
@@ -175,6 +175,7 @@ func (c *Car) setSpeedKMH(speed float64) {
 	c.body.SetLinearVelocity(pixelToBox2d(vel))
 }
 
+// Update moves the car based on its current state.
 func (c *Car) Update(dt float64) {
 	// kill sideways velocity for all wheels
 	for _, w := range c.wheels {
@@ -195,6 +196,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	var baseVec pixel.Vec
+	// handle acceleration
 	if c.Accelerating && c.getSpeedKMH() < c.maxSpeed {
 		if c.AccState == AccForwards {
 			// forwards
@@ -205,6 +207,7 @@ func (c *Car) Update(dt float64) {
 		}
 	}
 
+	// handle braking
 	if c.Breaking {
 		if c.getLocalVelocity().Y > 0 {
 			baseVec = pixel.V(0, -1)
@@ -236,6 +239,7 @@ func (c *Car) Update(dt float64) {
 	}
 }
 
+// Draw draws the car and its wheels.
 func (c *Car) Draw(win *pixelgl.Window) {
 	drawRectBody(win, box2dToPixel(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 
@@ -254,7 +258,7 @@ const (
 	inverseRevolve
 )
 
-// Wheel is a physics vehicle wheel.
+// Wheel is a physics-based vehicle wheel.
 type Wheel struct {
 	parentCar *Car
 

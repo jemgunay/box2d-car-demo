@@ -8,14 +8,16 @@ import (
 	"github.com/faiface/pixel/pixelgl"
 )
 
+// Crate is a dynamic physics-based box.
 type Crate struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
 
-	size pixel.Vec
+	size   pixel.Vec
 	colour color.Color
 }
 
+// NewCrate creates and initialises a crate.
 func NewCrate(world *box2d.B2World, pos, size pixel.Vec) *Crate {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
@@ -41,11 +43,12 @@ func NewCrate(world *box2d.B2World, pos, size pixel.Vec) *Crate {
 		bodyDef: bodyDef,
 		body:    body,
 
-		size: size,
+		size:   size,
 		colour: pixel.RGB(210.0/255.0, 105.0/255.0, 30.0/255.0),
 	}
 }
 
+// Draw draws the crate.
 func (c *Crate) Draw(win *pixelgl.Window) {
 	drawRectBody(win, box2dToPixel(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 }

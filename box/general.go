@@ -16,6 +16,14 @@ const (
 	box2dToWorld = 1.0 / worldToBox2d
 )
 
+type entity struct {
+	bodyDef *box2d.B2BodyDef
+	body    *box2d.B2Body
+
+	size          pixel.Vec
+	colour        color.Color
+}
+
 func drawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colour color.Color) {
 	// convert to pixel vector and scale to real world co-ordinates
 	posCentre := pos.Scaled(box2dToWorld)
