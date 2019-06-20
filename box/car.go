@@ -1,13 +1,11 @@
 package box
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 )
 
@@ -22,17 +20,18 @@ const (
 	SteerRight
 )
 const (
-	AccNone accState = iota
-	AccAccelerate
-	AccBrake
+	AccForwards accState = iota
+	AccReverse
 )
 
 type Car struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
 
-	SteerState      steerState
-	AccelerateState accState
+	SteerState   steerState
+	AccState     accState
+	Breaking     bool
+	Accelerating bool
 
 	size          pixel.Vec
 	colour        color.Color
@@ -44,7 +43,7 @@ type Car struct {
 	wheels []*Wheel
 }
 
-func NewCar(w *box2d.B2World, pos, size pixel.Vec) *Car {
+func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
@@ -65,7 +64,7 @@ func NewCar(w *box2d.B2World, pos, size pixel.Vec) *Car {
 	fixDef.Shape = shape
 
 	// create body
-	body := w.CreateBody(bodyDef)
+	body := world.CreateBody(bodyDef)
 	body.CreateFixtureFromDef(&fixDef)
 
 	car := &Car{
@@ -75,11 +74,10 @@ func NewCar(w *box2d.B2World, pos, size pixel.Vec) *Car {
 		size:          size,
 		colour:        pixel.RGB(0.5, 0.5, 0.5),
 		maxSteerAngle: 20,
-		maxSpeed:      20,
+		maxSpeed:      40,
 		power:         20,
 
-		SteerState:      SteerNone,
-		AccelerateState: AccNone,
+		SteerState: SteerNone,
 	}
 
 	// offset wheels to the ends of the car body
@@ -88,79 +86,15 @@ func NewCar(w *box2d.B2World, pos, size pixel.Vec) *Car {
 	wheelSize := size.Scaled(0.2)
 
 	// top left
-	car.AddWheel(w, pixel.V(-size.X/2.0, -wheelDeltaY), wheelSize, true, true)
+	car.AddWheel(world, pixel.V(-size.X/2.0, -wheelDeltaY), wheelSize, false, false)
 	// top right
-	car.AddWheel(w, pixel.V(size.X/2.0, -wheelDeltaY), wheelSize, true, true)
+	car.AddWheel(world, pixel.V(size.X/2.0, -wheelDeltaY), wheelSize, false, false)
 	// back left
-	car.AddWheel(w, pixel.V(-size.X/2.0, wheelDeltaY), wheelSize, false, false)
+	car.AddWheel(world, pixel.V(-size.X/2.0, wheelDeltaY), wheelSize, true, true)
 	// back right
-	car.AddWheel(w, pixel.V(size.X/2.0, wheelDeltaY), wheelSize, false, false)
+	car.AddWheel(world, pixel.V(size.X/2.0, wheelDeltaY), wheelSize, true, true)
 
 	return car
-}
-
-type Wheel struct {
-	parentCar *Car
-
-	bodyDef *box2d.B2BodyDef
-	body    *box2d.B2Body
-
-	pos, size          pixel.Vec
-	colour             color.Color
-	powered, revolving bool
-}
-
-func (w *Wheel) setAngle(angle float64) {
-	w.body.SetTransform(w.body.GetPosition(), w.parentCar.body.GetAngle()-angle)
-}
-
-func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
-	return carBody.GetLocalVector(carBody.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(w.pos.X, w.pos.Y)))
-}
-
-// returns a world unit vector pointing in the direction this wheel is moving
-func (w *Wheel) getDirectionVector() pixel.Vec {
-	var dirVec pixel.Vec
-	if w.getLocalVelocity(w.parentCar.body).Y > 0 {
-		dirVec = pixel.V(0, 1)
-	} else {
-		dirVec = pixel.V(0, -1)
-	}
-	// https://github.com/GameJs/gamejs/blob/master/src/gamejs/math/vectors.js#L85
-	return rotate(dirVec, w.body.GetAngle())
-}
-
-// substracts sideways velocity from this wheel's velocity vector and returns the remaining front-facing velocity vector.
-func (w *Wheel) getKillVelocityVector() box2d.B2Vec2 {
-	sidewaysAxis := w.getDirectionVector()
-	dotProd := box2dToPixel(w.body.GetLinearVelocity()).Dot(sidewaysAxis)
-	return pixelToBox2d(sidewaysAxis.Scaled(dotProd))
-}
-
-// removes all sideways velocity from this wheel's velocity
-func (w *Wheel) killSidewaysVelocity() {
-	kv := w.getKillVelocityVector()
-	w.body.SetLinearVelocity(kv)
-}
-
-func (w *Wheel) Draw(win *pixelgl.Window) {
-	// convert to pixel vector and scale to real world co-ordinates
-	posCentre := box2dToPixel(w.body.GetPosition()).Scaled(box2dToWorld)
-	// offset from centre to bottom left
-	posOffset := posCentre.Sub(w.size.Scaled(0.5))
-
-	wheelSprite := imdraw.New(nil)
-	wheelSprite.Color = w.colour
-	wheelSprite.Push(
-		pixel.V(posOffset.X, posOffset.Y),
-		pixel.V(posOffset.X, posOffset.Y+w.size.Y),
-		pixel.V(posOffset.X+w.size.X, posOffset.Y+w.size.Y),
-		pixel.V(posOffset.X+w.size.X, posOffset.Y),
-	)
-
-	wheelSprite.SetMatrix(pixel.IM.Rotated(posCentre, w.body.GetAngle()))
-	wheelSprite.Polygon(0)
-	wheelSprite.Draw(win)
 }
 
 // returns car's velocity vector relative to the car
@@ -229,7 +163,7 @@ func (c *Car) getSpeedKMH() float64 {
 }
 
 // set speed in kilometers per hour
-func (c *Car) setSpeed(speed float64) {
+func (c *Car) setSpeedKMH(speed float64) {
 	vel := box2dToPixel(c.body.GetLinearVelocity())
 	vel = vel.Unit()
 	vel = vel.Scaled((speed * 1000.0) / 3600.0)
@@ -256,17 +190,21 @@ func (c *Car) Update(dt float64) {
 	}
 
 	var baseVec pixel.Vec
-	// if accelerator is pressed down and speed limit has not been reached, go forwards
-	if (c.AccelerateState == AccAccelerate) && (c.getSpeedKMH() < c.maxSpeed) {
-		baseVec = pixel.V(0, -1)
-	} else if c.AccelerateState == AccBrake {
-		fmt.Println(c.getLocalVelocity().Y)
-		if c.getLocalVelocity().Y < 0 {
-			// braking, but still moving forwards - increased force
-			baseVec = pixel.V(0, 1.3)
+	if c.Accelerating && c.getSpeedKMH() < c.maxSpeed {
+		if c.AccState == AccForwards {
+			// forwards
+			baseVec = pixel.V(0, 1)
 		} else {
-			// going in reverse - less force
-			baseVec = pixel.V(0, 0.7)
+			// reverse
+			baseVec = pixel.V(0, -0.8)
+		}
+	}
+
+	if c.Breaking {
+		if c.getLocalVelocity().Y > 0 {
+			baseVec = pixel.V(0, -1)
+		} else if c.getLocalVelocity().Y < 0 {
+			baseVec = pixel.V(0, 1)
 		}
 	}
 
@@ -286,32 +224,60 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// if going very slow, stop in order to prevent endless sliding
-	if c.getSpeedKMH() < 1 && c.AccelerateState == AccNone {
-		c.setSpeed(0)
+	if !c.Accelerating && c.getSpeedKMH() < 1 {
+		c.setSpeedKMH(0)
 	}
 }
 
 func (c *Car) Draw(win *pixelgl.Window) {
-	// convert to pixel vector and scale to real world co-ordinates
-	posCentre := box2dToPixel(c.body.GetPosition()).Scaled(box2dToWorld)
-	// offset from centre to bottom left
-	posOffset := posCentre.Sub(c.size.Scaled(0.5))
-
-	carBodySprite := imdraw.New(nil)
-	carBodySprite.Color = c.colour
-	carBodySprite.Push(
-		pixel.V(posOffset.X, posOffset.Y),
-		pixel.V(posOffset.X, posOffset.Y+c.size.Y),
-		pixel.V(posOffset.X+c.size.X, posOffset.Y+c.size.Y),
-		pixel.V(posOffset.X+c.size.X, posOffset.Y),
-	)
-
-	carBodySprite.SetMatrix(pixel.IM.Rotated(posCentre, c.body.GetAngle()))
-	carBodySprite.Polygon(0)
-	carBodySprite.Draw(win)
+	drawRectBody(win, box2dToPixel(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 
 	// draw wheels
 	for _, wheel := range c.wheels {
-		wheel.Draw(win)
+		drawRectBody(win, box2dToPixel(wheel.body.GetPosition()), wheel.size, wheel.body.GetAngle(), wheel.colour)
 	}
+}
+
+type Wheel struct {
+	parentCar *Car
+
+	bodyDef *box2d.B2BodyDef
+	body    *box2d.B2Body
+
+	pos, size          pixel.Vec
+	colour             color.Color
+	powered, revolving bool
+}
+
+func (w *Wheel) setAngle(angle float64) {
+	w.body.SetTransform(w.body.GetPosition(), w.parentCar.body.GetAngle()-angle)
+}
+
+func (w *Wheel) getLocalVelocity(carBody *box2d.B2Body) box2d.B2Vec2 {
+	return carBody.GetLocalVector(carBody.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(w.pos.X, w.pos.Y)))
+}
+
+// returns a world unit vector pointing in the direction this wheel is moving
+func (w *Wheel) getDirectionVector() pixel.Vec {
+	var dirVec pixel.Vec
+	if w.getLocalVelocity(w.parentCar.body).Y > 0 {
+		dirVec = pixel.V(0, 1)
+	} else {
+		dirVec = pixel.V(0, -1)
+	}
+	// https://github.com/GameJs/gamejs/blob/master/src/gamejs/math/vectors.js#L85
+	return rotate(dirVec, w.body.GetAngle())
+}
+
+// substracts sideways velocity from this wheel's velocity vector and returns the remaining front-facing velocity vector.
+func (w *Wheel) getKillVelocityVector() box2d.B2Vec2 {
+	sidewaysAxis := w.getDirectionVector()
+	dotProd := box2dToPixel(w.body.GetLinearVelocity()).Dot(sidewaysAxis)
+	return pixelToBox2d(sidewaysAxis.Scaled(dotProd))
+}
+
+// removes all sideways velocity from this wheel's velocity
+func (w *Wheel) killSidewaysVelocity() {
+	kv := w.getKillVelocityVector()
+	w.body.SetLinearVelocity(kv)
 }
