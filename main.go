@@ -36,6 +36,7 @@ func start() {
 		return
 	}
 
+	// create Box2D world
 	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
 	winCentre := win.Bounds().Center()
 
@@ -50,6 +51,7 @@ func start() {
 		box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
 	}
 
+	// create crates
 	crateSize := pixel.V(50, 50)
 	crates := []*box.Crate{
 		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+250), crateSize),
