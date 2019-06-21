@@ -2,7 +2,6 @@
 package car
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 
@@ -120,27 +119,18 @@ type CarContactListener struct {
 	car *Car
 }
 
-func (c *CarContactListener) BeginContact(contact box2d.B2ContactInterface) {
-	/*if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
-		c.car.colour = pixel.RGB(0.2, 0.5, 0.2)
-	}*/
-}
+func (c *CarContactListener) BeginContact(contact box2d.B2ContactInterface) {}
 
-func (c *CarContactListener) EndContact(contact box2d.B2ContactInterface) {
-	/*if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
-		c.car.colour = pixel.RGB(0.5, 0.5, 0.5)
-	}*/
-}
+func (c *CarContactListener) EndContact(contact box2d.B2ContactInterface) {}
 
 func (c *CarContactListener) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2Manifold) {
-
 }
 
 func (c *CarContactListener) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
 	if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
 		i := math.Abs(impulse.TangentImpulses[0])
-		fmt.Println(i)
-		if i > 5 && c.car.health > 0 {
+		// check impulse exceeds minimum required to cause damage
+		if i > 3 && c.car.health > 0 {
 			c.car.health -= i
 			if c.car.health < 0 {
 				c.car.health = 0
@@ -304,10 +294,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// update colour to reflect health
-	hue := c.health * 1.2
-	rgb := colorful.Hsl(hue, 1, 0.5)
-	c.colour = rgb
-	//fmt.Printf("%v -> %v\n", c.health, c.colour)
+	c.colour = colorful.Hsl(c.health*1.2, 1, 0.5)
 }
 
 // Draw draws the car and its wheels.
