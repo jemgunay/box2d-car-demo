@@ -1,3 +1,4 @@
+// Package main setups up the demo world.
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+
 	"github.com/jemgunay/box2d-car-demo/box"
 	"github.com/jemgunay/box2d-car-demo/car"
 )

@@ -14,7 +14,7 @@ import (
 const (
 	// WorldToBox2D is used to scale from the world co-ordinate system to the Box2D co-ordinate system.
 	WorldToBox2D = 1.0 / 30.0
-	// WorldToBox2D is used to scale from the Box2D co-ordinate system to the world co-ordinate system.
+	// Box2DToWorld is used to scale from the Box2D co-ordinate system to the world co-ordinate system.
 	Box2DToWorld = 1.0 / WorldToBox2D
 )
 

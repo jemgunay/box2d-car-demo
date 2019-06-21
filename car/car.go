@@ -1,4 +1,4 @@
-// Package box is a port of https://github.com/domasx2/gamejs-box2d-car-example
+// Package car is a port of https://github.com/domasx2/gamejs-box2d-car-example
 package car
 
 import (
@@ -12,6 +12,7 @@ import (
 	"github.com/jemgunay/box2d-car-demo/box"
 )
 
+// SteerState determines the direction the car is steering in.
 type SteerState uint
 
 // The possible vehicle steering states.
