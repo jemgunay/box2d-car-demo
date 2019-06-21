@@ -13,7 +13,7 @@ type Wall struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
 
-	size pixel.Vec
+	size   pixel.Vec
 	colour color.Color
 }
 
@@ -33,6 +33,7 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 	fixDef := box2d.MakeB2FixtureDef()
 	fixDef.Shape = shape
 	fixDef.Restitution = 0.4
+	fixDef.UserData = "wall"
 
 	// create body
 	body := world.CreateBody(bodyDef)
@@ -42,7 +43,7 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 		bodyDef: bodyDef,
 		body:    body,
 
-		size: size,
+		size:   size,
 		colour: pixel.RGB(0.2, 0.1, 0.5),
 	}
 }

@@ -34,6 +34,7 @@ func NewCrate(world *box2d.B2World, pos, size pixel.Vec) *Crate {
 	fixDef.Density = 1.0
 	fixDef.Friction = 0.3
 	fixDef.Restitution = 0.4
+	fixDef.UserData = "crate"
 
 	// create body
 	body := world.CreateBody(bodyDef)

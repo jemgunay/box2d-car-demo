@@ -2,12 +2,14 @@
 package car
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/lucasb-eyer/go-colorful"
 
 	"github.com/jemgunay/box2d-car-demo/box"
 )
@@ -43,6 +45,7 @@ type Car struct {
 
 	size          pixel.Vec
 	colour        color.Color
+	health        float64
 	maxSteerAngle float64
 	maxSpeed      float64
 	power         float64
@@ -67,10 +70,11 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
-	fixDef.Density = 1.0
+	fixDef.Density = 4.0
 	fixDef.Friction = 0.3
 	fixDef.Restitution = 0.4
 	fixDef.Shape = shape
+	fixDef.UserData = "car"
 
 	// create body
 	body := world.CreateBody(bodyDef)
@@ -83,7 +87,8 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 		size:          size,
 		maxSteerAngle: 20,
 		maxSpeed:      40,
-		power:         20,
+		power:         50,
+		health:        100,
 		colour:        pixel.RGB(0.5, 0.5, 0.5),
 
 		steerState:        SteerNone,
@@ -104,7 +109,44 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	// top right
 	car.AddWheel(world, pixel.V(size.X/2.0, wheelDeltaY), wheelSize, true, standardRevolve)
 
+	// create contact listener to process damage upon collisions
+	world.SetContactListener(&CarContactListener{
+		car: car,
+	})
 	return car
+}
+
+type CarContactListener struct {
+	car *Car
+}
+
+func (c *CarContactListener) BeginContact(contact box2d.B2ContactInterface) {
+	/*if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
+		c.car.colour = pixel.RGB(0.2, 0.5, 0.2)
+	}*/
+}
+
+func (c *CarContactListener) EndContact(contact box2d.B2ContactInterface) {
+	/*if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
+		c.car.colour = pixel.RGB(0.5, 0.5, 0.5)
+	}*/
+}
+
+func (c *CarContactListener) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2Manifold) {
+
+}
+
+func (c *CarContactListener) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
+	if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
+		i := math.Abs(impulse.TangentImpulses[0])
+		fmt.Println(i)
+		if i > 5 && c.car.health > 0 {
+			c.car.health -= i
+			if c.car.health < 0 {
+				c.car.health = 0
+			}
+		}
+	}
 }
 
 // AddWheel creates a wheel and joins it to the parent car.
@@ -127,6 +169,7 @@ func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powere
 	// disable collision responses
 	fixDef.IsSensor = true
 	fixDef.Shape = shape
+	fixDef.UserData = "wheel"
 
 	// create body
 	body := world.CreateBody(bodyDef)
@@ -216,7 +259,7 @@ func (c *Car) Update(dt float64) {
 
 	var baseVec pixel.Vec
 	// handle acceleration
-	if c.Accelerating && c.GetSpeedKMH() < c.maxSpeed {
+	if c.Accelerating && c.GetSpeedKMH() < c.maxSpeed && c.health > 0 {
 		if c.accDirectionState == Forwards {
 			// forwards
 			baseVec = pixel.V(0, 1)
@@ -259,6 +302,12 @@ func (c *Car) Update(dt float64) {
 	if !c.Accelerating && c.GetSpeedKMH() < 1 {
 		c.setSpeedKMH(0)
 	}
+
+	// update colour to reflect health
+	hue := c.health * 1.2
+	rgb := colorful.Hsl(hue, 1, 0.5)
+	c.colour = rgb
+	//fmt.Printf("%v -> %v\n", c.health, c.colour)
 }
 
 // Draw draws the car and its wheels.
