@@ -170,8 +170,7 @@ func (c *Car) getSpeedKMH() float64 {
 // set speed in kilometers per hour
 func (c *Car) setSpeedKMH(speed float64) {
 	vel := box2dToPixel(c.body.GetLinearVelocity())
-	vel = vel.Unit()
-	vel = vel.Scaled((speed * 1000.0) / 3600.0)
+	vel = vel.Unit().Scaled((speed * 1000.0) / 3600.0)
 	c.body.SetLinearVelocity(pixelToBox2d(vel))
 }
 
@@ -184,15 +183,19 @@ func (c *Car) Update(dt float64) {
 
 	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
 	// in 200 ms
-	incr := (c.maxSteerAngle / 200.0) * dt
+	steerDelta := (c.maxSteerAngle / 200.0) * dt
 	if c.SteerState == SteerRight {
 		// increment angle without going over max steer
-		c.wheelAngle = math.Min(math.Max(c.wheelAngle, 0)+incr, c.maxSteerAngle)
+		c.wheelAngle = math.Min(c.wheelAngle+steerDelta, c.maxSteerAngle)
 	} else if c.SteerState == SteerLeft {
 		// decrement angle without going over max steer
-		c.wheelAngle = math.Max(math.Min(c.wheelAngle, 0)-incr, -c.maxSteerAngle)
-	} else {
-		c.wheelAngle = 0
+		c.wheelAngle = math.Max(c.wheelAngle-steerDelta, -c.maxSteerAngle)
+	} else if c.wheelAngle < 0 {
+		// ease wheels from left to centre
+		c.wheelAngle = math.Min(c.wheelAngle+steerDelta, 0)
+	} else if c.wheelAngle > 0 {
+		// ease wheels from right to centre
+		c.wheelAngle = math.Max(c.wheelAngle-steerDelta, 0)
 	}
 
 	var baseVec pixel.Vec
@@ -202,8 +205,8 @@ func (c *Car) Update(dt float64) {
 			// forwards
 			baseVec = pixel.V(0, 1)
 		} else {
-			// reverse
-			baseVec = pixel.V(0, -0.8)
+			// reverse (slower)
+			baseVec = pixel.V(0, -0.6)
 		}
 	}
 
@@ -217,7 +220,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// multiply by engine power, which gives us a force vector relative to the wheel
-	forceVec := pixelToBox2d(baseVec.Scaled(c.power))
+	forceVec := pixelToBox2d(baseVec.Scaled(c.power * dt / 10.0))
 
 	for _, wheel := range c.wheels {
 		// update revolving wheels

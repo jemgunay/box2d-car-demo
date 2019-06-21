@@ -37,7 +37,7 @@ func start() {
 	winCentre := win.Bounds().Center()
 
 	// create car
-	mainCar := box.NewCar(&world, winCentre, pixel.V(40, 80))
+	mainCar := box.NewCar(&world, winCentre, pixel.V(38, 80))
 
 	// create wall props
 	walls := []*box.Wall{
@@ -71,12 +71,14 @@ func start() {
 			return
 		}
 
-		mainCar.SteerState = box.SteerNone
-		if win.Pressed(pixelgl.KeyA) {
+		if win.Pressed(pixelgl.KeyA) && win.Pressed(pixelgl.KeyD) {
+			mainCar.SteerState = box.SteerNone
+		} else if win.Pressed(pixelgl.KeyA) {
 			mainCar.SteerState = box.SteerLeft
-		}
-		if win.Pressed(pixelgl.KeyD) {
+		} else if win.Pressed(pixelgl.KeyD) {
 			mainCar.SteerState = box.SteerRight
+		} else {
+			mainCar.SteerState = box.SteerNone
 		}
 
 		if win.JustPressed(pixelgl.KeyQ) {
