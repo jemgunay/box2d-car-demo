@@ -1,4 +1,4 @@
-// Package box is a port of https://github.com/domasx2/gamejs-box2d-car-example
+// Package box implements generic Box2D utils and objects.
 package box
 
 import (
@@ -12,21 +12,16 @@ import (
 )
 
 const (
-	worldToBox2d = 1.0 / 30.0
-	box2dToWorld = 1.0 / worldToBox2d
+	// WorldToBox2D is used to scale from the world co-ordinate system to the Box2D co-ordinate system.
+	WorldToBox2D = 1.0 / 30.0
+	// WorldToBox2D is used to scale from the Box2D co-ordinate system to the world co-ordinate system.
+	Box2DToWorld = 1.0 / WorldToBox2D
 )
 
-type entity struct {
-	bodyDef *box2d.B2BodyDef
-	body    *box2d.B2Body
-
-	size          pixel.Vec
-	colour        color.Color
-}
-
-func drawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colour color.Color) {
+// DrawRectBody draws a rectangle shape.
+func DrawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colour color.Color) {
 	// convert to pixel vector and scale to real world co-ordinates
-	posCentre := pos.Scaled(box2dToWorld)
+	posCentre := pos.Scaled(Box2DToWorld)
 	// offset from centre to bottom left
 	posOffset := posCentre.Sub(size.Scaled(0.5))
 
@@ -46,23 +41,28 @@ func drawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colou
 	sprite.Draw(win)
 }
 
-func box2dToPixel(vec box2d.B2Vec2) pixel.Vec {
+// ToPixelVec converts a Box2D vector to a pixel vector.
+func ToPixelVec(vec box2d.B2Vec2) pixel.Vec {
 	return pixel.V(vec.X, vec.Y)
 }
 
-func pixelToBox2d(vec pixel.Vec) box2d.B2Vec2 {
+// ToBox2DVec converts a pixel vector to a Box2D vector.
+func ToBox2DVec(vec pixel.Vec) box2d.B2Vec2 {
 	return box2d.MakeB2Vec2(vec.X, vec.Y)
 }
 
-func radToDeg(radians float64) float64 {
+// RadToDeg converts an angle in radians to degrees.
+func RadToDeg(radians float64) float64 {
 	return radians * (180.0 / math.Pi)
 }
 
-func degToRad(degrees float64) float64 {
+// DegToRad converts an angle in degrees to radians.
+func DegToRad(degrees float64) float64 {
 	return degrees * (math.Pi / 180.0)
 }
 
-func normaliseRadians(radians float64) float64 {
+// NormaliseRadians normalises an angle in radians between 0 and 2pi.
+func NormaliseRadians(radians float64) float64 {
 	radians = math.Mod(radians, 2.0*math.Pi)
 	if radians < 0 {
 		radians += 2.0 * math.Pi
@@ -70,9 +70,9 @@ func normaliseRadians(radians float64) float64 {
 	return radians
 }
 
-// rotate point by angle in radians
-func rotate(vec pixel.Vec, angle float64) pixel.Vec {
-	angle = normaliseRadians(angle)
+// Rotate rotates a point by angle in radians.
+func Rotate(vec pixel.Vec, angle float64) pixel.Vec {
+	angle = NormaliseRadians(angle)
 	vX := vec.X*math.Cos(angle) - vec.Y*math.Sin(angle)
 	vY := vec.X*math.Sin(angle) + vec.Y*math.Cos(angle)
 

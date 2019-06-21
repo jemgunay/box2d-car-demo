@@ -1,4 +1,5 @@
-package box
+// Package box is a port of https://github.com/domasx2/gamejs-box2d-car-example
+package car
 
 import (
 	"image/color"
@@ -7,23 +8,26 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+
+	"github.com/jemgunay/box2d-car-demo/box"
 )
 
-type steerState uint
+type SteerState uint
 
 // The possible vehicle steering states.
 const (
-	SteerNone steerState = iota
+	SteerNone SteerState = iota
 	SteerLeft
 	SteerRight
 )
 
-type accState uint
+// AccDirectionState determines the direction the car should accelerate in.
+type AccDirectionState string
 
 // The possible acceleration direction states.
 const (
-	AccForwards accState = iota
-	AccReverse
+	Forwards AccDirectionState = "forwards"
+	Reverse  AccDirectionState = "backwards"
 )
 
 // Car is the base for a drivable physics-based car.
@@ -31,10 +35,10 @@ type Car struct {
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
 
-	SteerState   steerState
-	AccState     accState
-	Breaking     bool
-	Accelerating bool
+	steerState        SteerState
+	accDirectionState AccDirectionState
+	Breaking          bool
+	Accelerating      bool
 
 	size          pixel.Vec
 	colour        color.Color
@@ -51,14 +55,14 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = box2d.MakeB2Vec2(pos.X*worldToBox2d, pos.Y*worldToBox2d)
+	bodyDef.Position = box2d.MakeB2Vec2(pos.X*box.WorldToBox2D, pos.Y*box.WorldToBox2D)
 	bodyDef.Angle = 0
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(size.X*0.5*worldToBox2d, size.Y*0.5*worldToBox2d)
+	shape.SetAsBox(size.X*0.5*box.WorldToBox2D, size.Y*0.5*box.WorldToBox2D)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -76,12 +80,13 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 		body:    body,
 
 		size:          size,
-		colour:        pixel.RGB(0.5, 0.5, 0.5),
 		maxSteerAngle: 20,
 		maxSpeed:      40,
 		power:         20,
+		colour:        pixel.RGB(0.5, 0.5, 0.5),
 
-		SteerState: SteerNone,
+		steerState:        SteerNone,
+		accDirectionState: Forwards,
 	}
 
 	// offset wheels to the ends of the car body
@@ -101,24 +106,19 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	return car
 }
 
-// returns car's velocity vector relative to the car
-func (c *Car) getLocalVelocity() box2d.B2Vec2 {
-	return c.body.GetLocalVector(c.body.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(0, 0)))
-}
-
 // AddWheel creates a wheel and joins it to the parent car.
 func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powered bool, revolveType wheelRevolveType) {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
-	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(relativePos.X*worldToBox2d, relativePos.Y*worldToBox2d))
+	bodyDef.Position = c.body.GetWorldPoint(box2d.MakeB2Vec2(relativePos.X*box.WorldToBox2D, relativePos.Y*box.WorldToBox2D))
 	bodyDef.Angle = c.body.GetAngle()
 	bodyDef.LinearDamping = 0.15
 	bodyDef.AngularDamping = 0.3
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(size.X*0.5*worldToBox2d, size.Y*0.5*worldToBox2d)
+	shape.SetAsBox(size.X*0.5*box.WorldToBox2D, size.Y*0.5*box.WorldToBox2D)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -161,17 +161,37 @@ func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powere
 	c.wheels = append(c.wheels, wheel)
 }
 
-// get speed in kilometers per hour
-func (c *Car) getSpeedKMH() float64 {
+// returns car's velocity vector relative to the car
+func (c *Car) getLocalVelocity() box2d.B2Vec2 {
+	return c.body.GetLocalVector(c.body.GetLinearVelocityFromLocalPoint(box2d.MakeB2Vec2(0, 0)))
+}
+
+// GetSpeedKMH gets the car's speed in kilometers per hour.
+func (c *Car) GetSpeedKMH() float64 {
 	velocity := c.body.GetLinearVelocity()
 	return (velocity.Length() / 1000.0) * 3600.0
 }
 
 // set speed in kilometers per hour
 func (c *Car) setSpeedKMH(speed float64) {
-	vel := box2dToPixel(c.body.GetLinearVelocity())
+	vel := box.ToPixelVec(c.body.GetLinearVelocity())
 	vel = vel.Unit().Scaled((speed * 1000.0) / 3600.0)
-	c.body.SetLinearVelocity(pixelToBox2d(vel))
+	c.body.SetLinearVelocity(box.ToBox2DVec(vel))
+}
+
+// ToggleDirection toggles the direction the car should accelerate in, between forwards and backwards.
+func (c *Car) ToggleDirection() AccDirectionState {
+	if c.accDirectionState == Forwards {
+		c.accDirectionState = Reverse
+	} else {
+		c.accDirectionState = Forwards
+	}
+	return c.accDirectionState
+}
+
+// SetSteerState sets the car's steer state.
+func (c *Car) SetSteerState(state SteerState) {
+	c.steerState = state
 }
 
 // Update moves the car based on its current state.
@@ -179,10 +199,10 @@ func (c *Car) Update(dt float64) {
 	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
 	// in 200 ms
 	steerDelta := (c.maxSteerAngle / 200.0) * dt
-	if c.SteerState == SteerRight {
+	if c.steerState == SteerRight {
 		// increment angle without going over max steer
 		c.wheelAngle = math.Min(c.wheelAngle+steerDelta, c.maxSteerAngle)
-	} else if c.SteerState == SteerLeft {
+	} else if c.steerState == SteerLeft {
 		// decrement angle without going over max steer
 		c.wheelAngle = math.Max(c.wheelAngle-steerDelta, -c.maxSteerAngle)
 	} else if c.wheelAngle < 0 {
@@ -195,8 +215,8 @@ func (c *Car) Update(dt float64) {
 
 	var baseVec pixel.Vec
 	// handle acceleration
-	if c.Accelerating && c.getSpeedKMH() < c.maxSpeed {
-		if c.AccState == AccForwards {
+	if c.Accelerating && c.GetSpeedKMH() < c.maxSpeed {
+		if c.accDirectionState == Forwards {
 			// forwards
 			baseVec = pixel.V(0, 1)
 		} else {
@@ -215,7 +235,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// multiply by engine power, which gives us a force vector relative to the wheel
-	forceVec := pixelToBox2d(baseVec.Scaled(c.power * dt / 10.0))
+	forceVec := box.ToBox2DVec(baseVec.Scaled(c.power * dt / 10.0))
 
 	for _, wheel := range c.wheels {
 		// kill sideways velocity for all wheels
@@ -223,9 +243,9 @@ func (c *Car) Update(dt float64) {
 
 		// update revolving wheels
 		if wheel.revolveType == standardRevolve {
-			wheel.setAngle(degToRad(c.wheelAngle))
+			wheel.setAngle(box.DegToRad(c.wheelAngle))
 		} else if wheel.revolveType == inverseRevolve {
-			wheel.setAngle(degToRad(-c.wheelAngle))
+			wheel.setAngle(box.DegToRad(-c.wheelAngle))
 		}
 		// apply force to each powered wheel
 		if wheel.powered {
@@ -235,7 +255,7 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// if going very slow, stop in order to prevent endless sliding
-	if !c.Accelerating && c.getSpeedKMH() < 1 {
+	if !c.Accelerating && c.GetSpeedKMH() < 1 {
 		c.setSpeedKMH(0)
 	}
 }
@@ -244,10 +264,10 @@ func (c *Car) Update(dt float64) {
 func (c *Car) Draw(win *pixelgl.Window) {
 	// draw wheels
 	for _, wheel := range c.wheels {
-		drawRectBody(win, box2dToPixel(wheel.body.GetPosition()), wheel.size, wheel.body.GetAngle(), wheel.colour)
+		box.DrawRectBody(win, box.ToPixelVec(wheel.body.GetPosition()), wheel.size, wheel.body.GetAngle(), wheel.colour)
 	}
 
-	drawRectBody(win, box2dToPixel(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
+	box.DrawRectBody(win, box.ToPixelVec(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 }
 
 type wheelRevolveType uint
@@ -289,14 +309,14 @@ func (w *Wheel) getDirectionVector() pixel.Vec {
 		dirVec = pixel.V(0, -1)
 	}
 	// https://github.com/GameJs/gamejs/blob/master/src/gamejs/math/vectors.js#L85
-	return rotate(dirVec, w.body.GetAngle())
+	return box.Rotate(dirVec, w.body.GetAngle())
 }
 
 // substracts sideways velocity from this wheel's velocity vector and returns the remaining front-facing velocity vector.
 func (w *Wheel) getKillVelocityVector() box2d.B2Vec2 {
 	sidewaysAxis := w.getDirectionVector()
-	dotProd := box2dToPixel(w.body.GetLinearVelocity()).Dot(sidewaysAxis)
-	return pixelToBox2d(sidewaysAxis.Scaled(dotProd))
+	dotProd := box.ToPixelVec(w.body.GetLinearVelocity()).Dot(sidewaysAxis)
+	return box.ToBox2DVec(sidewaysAxis.Scaled(dotProd))
 }
 
 // removes all sideways velocity from this wheel's velocity

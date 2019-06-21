@@ -9,6 +9,7 @@ import (
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/jemgunay/box2d-car-demo/box"
+	"github.com/jemgunay/box2d-car-demo/car"
 )
 
 func main() {
@@ -37,7 +38,7 @@ func start() {
 	winCentre := win.Bounds().Center()
 
 	// create car
-	mainCar := box.NewCar(&world, winCentre, pixel.V(38, 80))
+	mainCar := car.NewCar(&world, winCentre, pixel.V(38, 80))
 
 	// create wall props
 	walls := []*box.Wall{
@@ -71,24 +72,17 @@ func start() {
 			return
 		}
 
-		if win.Pressed(pixelgl.KeyA) && win.Pressed(pixelgl.KeyD) {
-			mainCar.SteerState = box.SteerNone
-		} else if win.Pressed(pixelgl.KeyA) {
-			mainCar.SteerState = box.SteerLeft
-		} else if win.Pressed(pixelgl.KeyD) {
-			mainCar.SteerState = box.SteerRight
+		if win.Pressed(pixelgl.KeyA) && !win.Pressed(pixelgl.KeyD) {
+			mainCar.SetSteerState(car.SteerLeft)
+		} else if win.Pressed(pixelgl.KeyD) && !win.Pressed(pixelgl.KeyA) {
+			mainCar.SetSteerState(car.SteerRight)
 		} else {
-			mainCar.SteerState = box.SteerNone
+			mainCar.SetSteerState(car.SteerNone)
 		}
 
 		if win.JustPressed(pixelgl.KeyQ) {
-			if mainCar.AccState == box.AccForwards {
-				mainCar.AccState = box.AccReverse
-				fmt.Println("Reversing")
-			} else {
-				mainCar.AccState = box.AccForwards
-				fmt.Println("Forwards")
-			}
+			newDir := mainCar.ToggleDirection()
+			fmt.Println(newDir)
 		}
 
 		if win.Pressed(pixelgl.KeyW) {

@@ -22,12 +22,12 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 	// create rigid body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_staticBody
-	bodyDef.Position = box2d.MakeB2Vec2(pos.X*worldToBox2d, pos.Y*worldToBox2d)
+	bodyDef.Position = box2d.MakeB2Vec2(pos.X*WorldToBox2D, pos.Y*WorldToBox2D)
 	bodyDef.Angle = 0
 
 	// create fixture shape
 	shape := box2d.NewB2PolygonShape()
-	shape.SetAsBox(size.X*0.5*worldToBox2d, size.Y*0.5*worldToBox2d)
+	shape.SetAsBox(size.X*0.5*WorldToBox2D, size.Y*0.5*WorldToBox2D)
 
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
@@ -49,5 +49,5 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 
 // Draw draws the wall.
 func (w *Wall) Draw(win *pixelgl.Window) {
-	drawRectBody(win, box2dToPixel(w.body.GetPosition()), w.size, w.body.GetAngle(), w.colour)
+	DrawRectBody(win, ToPixelVec(w.body.GetPosition()), w.size, w.body.GetAngle(), w.colour)
 }
