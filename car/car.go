@@ -109,24 +109,24 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	car.AddWheel(world, pixel.V(size.X/2.0, wheelDeltaY), wheelSize, true, standardRevolve)
 
 	// create contact listener to process damage upon collisions
-	world.SetContactListener(&CarContactListener{
+	world.SetContactListener(&carContactListener{
 		car: car,
 	})
 	return car
 }
 
-type CarContactListener struct {
+type carContactListener struct {
 	car *Car
 }
 
-func (c *CarContactListener) BeginContact(contact box2d.B2ContactInterface) {}
+func (c *carContactListener) BeginContact(contact box2d.B2ContactInterface) {}
 
-func (c *CarContactListener) EndContact(contact box2d.B2ContactInterface) {}
+func (c *carContactListener) EndContact(contact box2d.B2ContactInterface) {}
 
-func (c *CarContactListener) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2Manifold) {
+func (c *carContactListener) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2Manifold) {
 }
 
-func (c *CarContactListener) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
+func (c *carContactListener) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
 	if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
 		i := math.Abs(impulse.TangentImpulses[0])
 		// check impulse exceeds minimum required to cause damage
@@ -137,6 +137,10 @@ func (c *CarContactListener) PostSolve(contact box2d.B2ContactInterface, impulse
 			}
 		}
 	}
+}
+
+func (c *Car) Destroy() {
+
 }
 
 // AddWheel creates a wheel and joins it to the parent car.
