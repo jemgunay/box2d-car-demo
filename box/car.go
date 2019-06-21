@@ -176,11 +176,6 @@ func (c *Car) setSpeedKMH(speed float64) {
 
 // Update moves the car based on its current state.
 func (c *Car) Update(dt float64) {
-	// kill sideways velocity for all wheels
-	for _, w := range c.wheels {
-		w.killSidewaysVelocity()
-	}
-
 	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
 	// in 200 ms
 	steerDelta := (c.maxSteerAngle / 200.0) * dt
@@ -213,9 +208,9 @@ func (c *Car) Update(dt float64) {
 	// handle braking
 	if c.Breaking {
 		if c.getLocalVelocity().Y > 0 {
-			baseVec = pixel.V(0, -1)
+			baseVec = pixel.V(0, -1.2)
 		} else if c.getLocalVelocity().Y < 0 {
-			baseVec = pixel.V(0, 1)
+			baseVec = pixel.V(0, 1.2)
 		}
 	}
 
@@ -223,6 +218,9 @@ func (c *Car) Update(dt float64) {
 	forceVec := pixelToBox2d(baseVec.Scaled(c.power * dt / 10.0))
 
 	for _, wheel := range c.wheels {
+		// kill sideways velocity for all wheels
+		wheel.killSidewaysVelocity()
+
 		// update revolving wheels
 		if wheel.revolveType == standardRevolve {
 			wheel.setAngle(degToRad(c.wheelAngle))
