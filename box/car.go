@@ -242,12 +242,12 @@ func (c *Car) Update(dt float64) {
 
 // Draw draws the car and its wheels.
 func (c *Car) Draw(win *pixelgl.Window) {
-	drawRectBody(win, box2dToPixel(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
-
 	// draw wheels
 	for _, wheel := range c.wheels {
 		drawRectBody(win, box2dToPixel(wheel.body.GetPosition()), wheel.size, wheel.body.GetAngle(), wheel.colour)
 	}
+
+	drawRectBody(win, box2dToPixel(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 }
 
 type wheelRevolveType uint
