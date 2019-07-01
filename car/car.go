@@ -39,7 +39,7 @@ type Car struct {
 
 	steerState        SteerState
 	accDirectionState AccDirectionState
-	Breaking          bool
+	Braking           bool
 	Accelerating      bool
 
 	size          pixel.Vec
@@ -264,11 +264,11 @@ func (c *Car) Update(dt float64) {
 	}
 
 	// handle braking
-	if c.Breaking {
+	if c.Braking {
 		if c.getLocalVelocity().Y > 0 {
-			baseVec = pixel.V(0, -1.2)
+			baseVec = pixel.V(0, -1)
 		} else if c.getLocalVelocity().Y < 0 {
-			baseVec = pixel.V(0, 1.2)
+			baseVec = pixel.V(0, 1)
 		}
 	}
 

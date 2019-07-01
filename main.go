@@ -15,9 +15,7 @@ import (
 )
 
 func main() {
-	pixelgl.Run(func() {
-		start()
-	})
+	pixelgl.Run(start)
 }
 
 func start() {
@@ -95,9 +93,9 @@ func start() {
 			mainCar.Accelerating = false
 		}
 		if win.Pressed(pixelgl.KeyS) {
-			mainCar.Breaking = true
+			mainCar.Braking = true
 		} else {
-			mainCar.Breaking = false
+			mainCar.Braking = false
 		}
 
 		mainCar.Update(dt)
