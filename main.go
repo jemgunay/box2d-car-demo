@@ -79,6 +79,9 @@ func start() {
 		if win.JustPressed(pixelgl.KeyEscape) {
 			return
 		}
+		if win.JustPressed(pixelgl.KeyR) {
+			mainCar = car.NewCar(&world, winCentre, pixel.V(38, 80))
+		}
 
 		if win.Pressed(pixelgl.KeyA) && !win.Pressed(pixelgl.KeyD) {
 			mainCar.SetSteerState(car.SteerLeft)

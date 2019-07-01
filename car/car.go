@@ -88,7 +88,6 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	fixDef.UserData = "car"
 	fixDef.Filter.CategoryBits = box.CarCategory
 	fixDef.Filter.MaskBits = box.WallCategory | box.CrateCategory
-	//fixDef.Filter.GroupIndex = -4
 
 	// create body
 	body := world.CreateBody(bodyDef)
@@ -167,8 +166,8 @@ func (c *Car) Destroy(world *box2d.B2World) {
 
 	jointDef := box2d.MakeB2FrictionJointDef()
 	jointDef.Initialize(c.body, box.MainGround.Body, c.body.GetWorldCenter())
-	jointDef.MaxForce = 10.0
-	jointDef.MaxTorque = 5.0
+	jointDef.MaxForce = 5.0
+	jointDef.MaxTorque = 3.0
 	world.CreateJoint(&jointDef)
 
 	for _, wheel := range c.wheels {
@@ -183,8 +182,8 @@ func (c *Car) Destroy(world *box2d.B2World) {
 		// create friction joint to simulate top down friction
 		jointDef := box2d.MakeB2FrictionJointDef()
 		jointDef.Initialize(wheel.body, box.MainGround.Body, wheel.body.GetWorldCenter())
-		jointDef.MaxForce = 0.2
-		jointDef.MaxTorque = 0.2
+		jointDef.MaxForce = 0.01
+		jointDef.MaxTorque = 0.01
 		world.CreateJoint(&jointDef)
 
 		world.DestroyJoint(wheel.joint)
@@ -329,12 +328,12 @@ func (c *Car) Update(world *box2d.B2World, dt float64) {
 	forceVec := box.ToBox2DVec(baseVec.Scaled(c.power * dt / 10.0))
 
 	for _, wheel := range c.wheels {
+		// kill sideways velocity for all wheels
+		wheel.killSidewaysVelocity()
 		if wheel.healthState != Healthy {
 			continue
 		}
 
-		// kill sideways velocity for all wheels
-		wheel.killSidewaysVelocity()
 
 		// update revolving wheels
 		if wheel.revolveType == standardRevolve {
