@@ -19,7 +19,7 @@ type Wall struct {
 
 // NewWall creates and initialises a new wall.
 func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
-	// create rigid body definition
+	// create rigid Body definition
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_staticBody
 	bodyDef.Position = box2d.MakeB2Vec2(pos.X*WorldToBox2D, pos.Y*WorldToBox2D)
@@ -34,8 +34,10 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 	fixDef.Shape = shape
 	fixDef.Restitution = 0.4
 	fixDef.UserData = "wall"
+	fixDef.Filter.CategoryBits = WallCategory
+	fixDef.Filter.MaskBits = CrateCategory | CarCategory
 
-	// create body
+	// create Body
 	body := world.CreateBody(bodyDef)
 	body.CreateFixtureFromDef(&fixDef)
 

@@ -18,6 +18,15 @@ const (
 	Box2DToWorld = 1.0 / WorldToBox2D
 )
 
+// Categories for defining collision groups.
+const (
+	WallCategory   uint16 = 0x0001
+	CarCategory    uint16 = 0x0002
+	CrateCategory  uint16 = 0x0004
+)
+
+var MainGround *Ground
+
 // DrawRectBody draws a rectangle shape.
 func DrawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colour color.Color) {
 	// convert to pixel vector and scale to real world co-ordinates

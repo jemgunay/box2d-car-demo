@@ -32,13 +32,25 @@ const (
 	Reverse  AccDirectionState = "backwards"
 )
 
+// HealthState determines the health state of the car and how it can be interacted with based on damage taken.
+type HealthState uint
+
+// The possible vehicle health states.
+const (
+	Healthy HealthState = iota
+	Destroyed
+	Detached
+)
+
 // Car is the base for a drivable physics-based car.
 type Car struct {
-	bodyDef *box2d.B2BodyDef
-	body    *box2d.B2Body
+	bodyDef       *box2d.B2BodyDef
+	body          *box2d.B2Body
+	frictionJoint *box2d.B2FrictionJoint
 
 	steerState        SteerState
 	accDirectionState AccDirectionState
+	healthState       HealthState
 	Braking           bool
 	Accelerating      bool
 
@@ -74,6 +86,9 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 	fixDef.Restitution = 0.4
 	fixDef.Shape = shape
 	fixDef.UserData = "car"
+	fixDef.Filter.CategoryBits = box.CarCategory
+	fixDef.Filter.MaskBits = box.WallCategory | box.CrateCategory
+	//fixDef.Filter.GroupIndex = -4
 
 	// create body
 	body := world.CreateBody(bodyDef)
@@ -92,6 +107,7 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 
 		steerState:        SteerNone,
 		accDirectionState: Forwards,
+		healthState:       Healthy,
 	}
 
 	// offset wheels to the ends of the car body
@@ -116,6 +132,7 @@ func NewCar(world *box2d.B2World, pos, size pixel.Vec) *Car {
 }
 
 type carContactListener struct {
+	*box2d.B2ContactFilter
 	car *Car
 }
 
@@ -128,10 +145,10 @@ func (c *carContactListener) PreSolve(contact box2d.B2ContactInterface, oldManif
 
 func (c *carContactListener) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {
 	if contact.GetFixtureA().GetUserData() == "car" || contact.GetFixtureB().GetUserData() == "car" {
-		i := math.Abs(impulse.TangentImpulses[0])
+		absImpulse := math.Abs(impulse.TangentImpulses[0])
 		// check impulse exceeds minimum required to cause damage
-		if i > 3 && c.car.health > 0 {
-			c.car.health -= i
+		if absImpulse > 3 && c.car.health > 0 {
+			c.car.health -= absImpulse
 			if c.car.health < 0 {
 				c.car.health = 0
 			}
@@ -139,8 +156,41 @@ func (c *carContactListener) PostSolve(contact box2d.B2ContactInterface, impulse
 	}
 }
 
-func (c *Car) Destroy() {
+// Destroy destroys the car, causing the wheels to disconnect.
+func (c *Car) Destroy(world *box2d.B2World) {
+	c.health = 0
+	c.healthState = Destroyed
 
+	filterData := c.body.GetFixtureList().GetFilterData()
+	filterData.MaskBits = filterData.MaskBits | box.CarCategory
+	c.body.GetFixtureList().SetFilterData(filterData)
+
+	jointDef := box2d.MakeB2FrictionJointDef()
+	jointDef.Initialize(c.body, box.MainGround.Body, c.body.GetWorldCenter())
+	jointDef.MaxForce = 10.0
+	jointDef.MaxTorque = 5.0
+	world.CreateJoint(&jointDef)
+
+	for _, wheel := range c.wheels {
+		if wheel.healthState != Healthy {
+			continue
+		}
+
+		filterData := wheel.body.GetFixtureList().GetFilterData()
+		filterData.MaskBits = filterData.MaskBits | box.CarCategory
+		wheel.body.GetFixtureList().SetFilterData(filterData)
+
+		// create friction joint to simulate top down friction
+		jointDef := box2d.MakeB2FrictionJointDef()
+		jointDef.Initialize(wheel.body, box.MainGround.Body, wheel.body.GetWorldCenter())
+		jointDef.MaxForce = 0.2
+		jointDef.MaxTorque = 0.2
+		world.CreateJoint(&jointDef)
+
+		world.DestroyJoint(wheel.joint)
+
+		wheel.healthState = Detached
+	}
 }
 
 // AddWheel creates a wheel and joins it to the parent car.
@@ -160,28 +210,16 @@ func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powere
 	// create fixture
 	fixDef := box2d.MakeB2FixtureDef()
 	fixDef.Density = 1.0
-	// disable collision responses
-	fixDef.IsSensor = true
+	fixDef.Friction = 0.3
+	fixDef.Restitution = 0.4
 	fixDef.Shape = shape
 	fixDef.UserData = "wheel"
+	fixDef.Filter.CategoryBits = box.CarCategory
+	fixDef.Filter.MaskBits = box.WallCategory | box.CrateCategory
 
 	// create body
 	body := world.CreateBody(bodyDef)
 	body.CreateFixtureFromDef(&fixDef)
-
-	if revolveType == fixedRevolve {
-		jointDef := box2d.MakeB2PrismaticJointDef()
-		jointDef.Initialize(c.body, body, body.GetWorldCenter(), box2d.MakeB2Vec2(1, 0))
-		jointDef.EnableLimit = true
-		jointDef.LowerTranslation = 0
-		jointDef.UpperTranslation = 0
-		world.CreateJoint(&jointDef)
-	} else {
-		jointDef := box2d.MakeB2RevoluteJointDef()
-		jointDef.Initialize(c.body, body, body.GetWorldCenter())
-		jointDef.EnableMotor = true
-		world.CreateJoint(&jointDef)
-	}
 
 	wheel := &Wheel{
 		parentCar: c,
@@ -194,6 +232,21 @@ func (c *Car) AddWheel(world *box2d.B2World, relativePos, size pixel.Vec, powere
 		colour:      pixel.RGB(0.3, 0.3, 0.3),
 		powered:     powered,
 		revolveType: revolveType,
+	}
+
+	// joint wheel to car body
+	if revolveType == fixedRevolve {
+		jointDef := box2d.MakeB2PrismaticJointDef()
+		jointDef.Initialize(c.body, body, body.GetWorldCenter(), box2d.MakeB2Vec2(1, 0))
+		jointDef.EnableLimit = true
+		jointDef.LowerTranslation = 0
+		jointDef.UpperTranslation = 0
+		wheel.joint = world.CreateJoint(&jointDef)
+	} else {
+		jointDef := box2d.MakeB2RevoluteJointDef()
+		jointDef.Initialize(c.body, body, body.GetWorldCenter())
+		jointDef.EnableMotor = true
+		wheel.joint = world.CreateJoint(&jointDef)
 	}
 
 	c.wheels = append(c.wheels, wheel)
@@ -233,7 +286,7 @@ func (c *Car) SetSteerState(state SteerState) {
 }
 
 // Update moves the car based on its current state.
-func (c *Car) Update(dt float64) {
+func (c *Car) Update(world *box2d.B2World, dt float64) {
 	// calculate the change in wheel's angle for this update, assuming the wheel will reach is maximum angle from zero
 	// in 200 ms
 	steerDelta := (c.maxSteerAngle / 200.0) * dt
@@ -276,6 +329,10 @@ func (c *Car) Update(dt float64) {
 	forceVec := box.ToBox2DVec(baseVec.Scaled(c.power * dt / 10.0))
 
 	for _, wheel := range c.wheels {
+		if wheel.healthState != Healthy {
+			continue
+		}
+
 		// kill sideways velocity for all wheels
 		wheel.killSidewaysVelocity()
 
@@ -295,6 +352,12 @@ func (c *Car) Update(dt float64) {
 	// if going very slow, stop in order to prevent endless sliding
 	if !c.Accelerating && c.GetSpeedKMH() < 1 {
 		c.setSpeedKMH(0)
+	}
+
+	// process health state
+	if c.healthState != Destroyed && c.health <= 0 {
+		// destroy car if health not above 0
+		c.Destroy(world)
 	}
 
 	// update colour to reflect health
@@ -326,11 +389,13 @@ type Wheel struct {
 
 	bodyDef *box2d.B2BodyDef
 	body    *box2d.B2Body
+	joint   box2d.B2JointInterface
 
 	pos, size   pixel.Vec
 	colour      color.Color
 	powered     bool
 	revolveType wheelRevolveType
+	healthState HealthState
 }
 
 func (w *Wheel) setAngle(angle float64) {

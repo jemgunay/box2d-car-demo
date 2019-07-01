@@ -38,6 +38,12 @@ func start() {
 	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
 	winCentre := win.Bounds().Center()
 
+	// enable contact filter
+	world.SetContactFilter(&box2d.B2ContactFilter{})
+
+	// create ground
+	box.MainGround = box.NewGround(&world, winCentre, win.Bounds().Size())
+
 	// create car
 	mainCar := car.NewCar(&world, winCentre, pixel.V(38, 80))
 
@@ -98,7 +104,7 @@ func start() {
 			mainCar.Braking = false
 		}
 
-		mainCar.Update(dt)
+		mainCar.Update(&world, dt)
 
 		world.Step(dt/1000.0, 8, 3)
 		world.ClearForces()
