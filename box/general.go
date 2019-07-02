@@ -20,11 +20,12 @@ const (
 
 // Categories for defining collision groups.
 const (
-	WallCategory   uint16 = 0x0001
-	CarCategory    uint16 = 0x0002
-	CrateCategory  uint16 = 0x0004
+	WallCategory  uint16 = 0x0001
+	CarCategory   uint16 = 0x0002
+	CrateCategory uint16 = 0x0004
 )
 
+// MainGround is the world ground used to simulate top-down friction.
 var MainGround *Ground
 
 // DrawRectBody draws a rectangle shape.
