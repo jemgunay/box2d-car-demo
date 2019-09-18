@@ -21,7 +21,7 @@ func main() {
 func start() {
 	// create window config
 	cfg := pixelgl.WindowConfig{
-		Title:     "Box2D Car Demo",
+		Title:     "Car Demo",
 		Bounds:    pixel.R(0, 0, 1080, 720),
 		VSync:     false,
 		Resizable: true,
