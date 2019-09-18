@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"image/color"
+	"math/rand"
 	"time"
 
 	"github.com/ByteArena/box2d"
@@ -19,6 +20,8 @@ func main() {
 }
 
 func start() {
+	rand.Seed(time.Now().UnixNano())
+
 	// create window config
 	cfg := pixelgl.WindowConfig{
 		Title:     "Car Evolution",
@@ -127,4 +130,8 @@ func start() {
 
 		<-frameRateLimiter
 	}
+}
+
+func determineFitness() {
+
 }
