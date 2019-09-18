@@ -68,12 +68,12 @@ func start() {
 
 	// limit update cycles FPS
 	frameRateLimiter := time.Tick(time.Second / 120)
-	prevTimestamp := time.Now().UTC()
+	prevTimestamp := time.Now()
 
 	// main game loop
 	for !win.Closed() {
 		dt := float64(time.Since(prevTimestamp).Nanoseconds()) / 1e6
-		prevTimestamp = time.Now().UTC()
+		prevTimestamp = time.Now()
 
 		// handle keyboard input
 		if win.JustPressed(pixelgl.KeyEscape) {

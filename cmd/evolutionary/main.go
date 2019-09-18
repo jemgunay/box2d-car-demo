@@ -10,6 +10,7 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/jemgunay/box2d-car-demo/genetics"
 
 	"github.com/jemgunay/box2d-car-demo/box"
 	"github.com/jemgunay/box2d-car-demo/car"
@@ -21,6 +22,19 @@ func main() {
 
 func start() {
 	rand.Seed(time.Now().UnixNano())
+
+	population, err := genetics.NewPopulation(10, []byte{'x', 'w', 'a', 'd'})
+	if err != nil {
+		fmt.Printf("failed to create population: %s\n", err)
+		return
+	}
+
+	population.PerformSelection()
+	fmt.Printf("1) %v\n", population.Solutions)
+	population.PerformSelection()
+	fmt.Printf("2) %v\n", population.Solutions)
+	population.PerformSelection	()
+	fmt.Printf("3) %v\n", population.Solutions)
 
 	// create window config
 	cfg := pixelgl.WindowConfig{
@@ -71,12 +85,12 @@ func start() {
 
 	// limit update cycles FPS
 	frameRateLimiter := time.Tick(time.Second / 120)
-	prevTimestamp := time.Now().UTC()
+	prevTimestamp := time.Now()
 
 	// main game loop
 	for !win.Closed() {
 		dt := float64(time.Since(prevTimestamp).Nanoseconds()) / 1e6
-		prevTimestamp = time.Now().UTC()
+		prevTimestamp = time.Now()
 
 		// handle keyboard input
 		if win.JustPressed(pixelgl.KeyEscape) {
@@ -124,14 +138,8 @@ func start() {
 			crate.Draw(win)
 		}
 		mainCar.Draw(win)
-		//camMatrix := pixel.IM.Scaled(win.Bounds().Center(), 1)
-		//win.SetMatrix(camMatrix)
 		win.Update()
 
 		<-frameRateLimiter
 	}
-}
-
-func determineFitness() {
-
 }
