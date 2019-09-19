@@ -3,6 +3,7 @@ package genetics
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -48,12 +49,17 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 	return p, nil
 }
 
+const ratioExponentialScale = 1.0/55.0
+
 func (p *Population) PerformSelection() {
 	p.Iteration++
 
 	// determine fitness ratios from fitness values
-	for _, s := range p.Sequences {
-		s.FitnessRatio = s.FitnessValue / p.FitnessSum
+	sort.Slice(p.Sequences, func(i, j int) bool {
+		return p.Sequences[i].FitnessValue < p.Sequences[j].FitnessValue
+	})
+	for i, s := range p.Sequences {
+		s.FitnessRatio = ratioExponentialScale * float64(i+1)
 		//fmt.Printf("%v [%v]\n", s.Data, s.FitnessValue)
 	}
 	p.FitnessSum = 0
@@ -69,9 +75,9 @@ func (p *Population) PerformSelection() {
 		swap(c1, c2)
 		// mutate
 		c1.mutate(p.options)
-		c1.mutate(p.options)
+		//c1.mutate(p.options)
 		c2.mutate(p.options)
-		c2.mutate(p.options)
+		//c2.mutate(p.options)
 
 		newSequences = append(newSequences, c1, c2)
 	}

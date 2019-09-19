@@ -33,7 +33,7 @@ const (
 func start() {
 	rand.Seed(time.Now().UnixNano())
 
-	population, err := genetics.NewPopulation(10, 20, []genetics.Option{Nothing, Forward, Left, Right, Brake})
+	population, err := genetics.NewPopulation(10, 10, []genetics.Option{Nothing, Forward, Left, Right, Brake})
 	if err != nil {
 		fmt.Printf("failed to create initial population: %s\n", err)
 		return
@@ -166,7 +166,7 @@ func start() {
 					}
 
 					//time.Sleep(time.Millisecond * 1000 / time.Duration(worldStepScaler)) // 100ms
-					time.Sleep(time.Millisecond * 2) // 100ms
+					time.Sleep(time.Millisecond * 5) // 100ms
 
 					// reset states
 					mainCar.SetSteerState(car.SteerNone)
