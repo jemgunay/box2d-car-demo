@@ -5,7 +5,7 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/imdraw"
 )
 
 // Wall is an immovable physics-based wall.
@@ -51,6 +51,6 @@ func NewWall(world *box2d.B2World, pos, size pixel.Vec) *Wall {
 }
 
 // Draw draws the wall.
-func (w *Wall) Draw(win *pixelgl.Window) {
-	DrawRectBody(win, ToPixelVec(w.body.GetPosition()), w.size, w.body.GetAngle(), w.colour)
+func (w *Wall) Draw(imd *imdraw.IMDraw) {
+	DrawRectBody(imd, ToPixelVec(w.body.GetPosition()), w.size, w.body.GetAngle(), w.colour)
 }

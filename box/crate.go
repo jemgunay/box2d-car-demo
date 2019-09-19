@@ -5,7 +5,7 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/imdraw"
 )
 
 // Crate is a dynamic physics-based box.
@@ -63,6 +63,6 @@ func NewCrate(world *box2d.B2World, pos, size pixel.Vec) *Crate {
 }
 
 // Draw draws the crate.
-func (c *Crate) Draw(win *pixelgl.Window) {
-	DrawRectBody(win, ToPixelVec(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
+func (c *Crate) Draw(imd *imdraw.IMDraw) {
+	DrawRectBody(imd, ToPixelVec(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 }

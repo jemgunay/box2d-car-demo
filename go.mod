@@ -11,3 +11,5 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.0.2
 	github.com/pkg/errors v0.8.1
 )
+
+go 1.13

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 
 	"github.com/jemgunay/box2d-car-demo/box"
@@ -69,6 +70,7 @@ func start() {
 	// limit update cycles FPS
 	frameRateLimiter := time.Tick(time.Second / 120)
 	prevTimestamp := time.Now()
+	imd := imdraw.New(nil)
 
 	// main game loop
 	for !win.Closed() {
@@ -80,6 +82,7 @@ func start() {
 			return
 		}
 		if win.JustPressed(pixelgl.KeyR) {
+			mainCar.Destroy()
 			mainCar = car.NewCar(&world, winCentre, pixel.V(38, 80))
 		}
 
@@ -114,15 +117,15 @@ func start() {
 
 		// draw window
 		win.Clear(color.White)
+		imd.Clear()
 		for _, wall := range walls {
-			wall.Draw(win)
+			wall.Draw(imd)
 		}
 		for _, crate := range crates {
-			crate.Draw(win)
+			crate.Draw(imd)
 		}
-		mainCar.Draw(win)
-		//camMatrix := pixel.IM.Scaled(win.Bounds().Center(), 1)
-		//win.SetMatrix(camMatrix)
+		mainCar.Draw(imd)
+		imd.Draw(win)
 		win.Update()
 
 		<-frameRateLimiter

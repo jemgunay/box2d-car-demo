@@ -54,8 +54,9 @@ func (p *Population) PerformSelection() {
 	// determine fitness ratios from fitness values
 	for _, s := range p.Sequences {
 		s.FitnessRatio = s.FitnessValue / p.FitnessSum
-		fmt.Println(s.FitnessRatio, s.FitnessValue, p.FitnessSum)
+		//fmt.Printf("%v [%v]\n", s.Data, s.FitnessValue)
 	}
+	p.FitnessSum = 0
 
 	// perform selection and apply mutations
 	newSequences := make([]*Sequence, 0, len(p.Sequences))
@@ -68,6 +69,8 @@ func (p *Population) PerformSelection() {
 		swap(c1, c2)
 		// mutate
 		c1.mutate(p.options)
+		c1.mutate(p.options)
+		c2.mutate(p.options)
 		c2.mutate(p.options)
 
 		newSequences = append(newSequences, c1, c2)
@@ -116,8 +119,8 @@ func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
 	c1 := NewSequence(size)
 	c2 := NewSequence(size)
 
-	// TODO: scale min/max to size
-	separator := randRange(3, size-3)
+	// TODO: offset from centre randomly
+	separator := size/2
 
 	for i := separator; i < size; i++ {
 		if i < separator {

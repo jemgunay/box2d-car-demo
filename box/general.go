@@ -8,7 +8,6 @@ import (
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
-	"github.com/faiface/pixel/pixelgl"
 )
 
 const (
@@ -29,36 +28,31 @@ const (
 var MainGround *Ground
 
 // DrawRectBody draws a rectangle shape.
-func DrawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colour color.Color) {
+func DrawRectBody(imd *imdraw.IMDraw, pos, size pixel.Vec, angle float64, colour color.Color) {
 	// convert to pixel vector and scale to real world co-ordinates
 	posCentre := pos.Scaled(Box2DToWorld)
 	// offset from centre to bottom left
 	posOffset := posCentre.Sub(size.Scaled(0.5))
 
 	// create sprite
-	sprite := imdraw.New(nil)
-	sprite.Color = colour
-	sprite.Push(
+	imd.Color = colour
+	imd.Push(
 		pixel.V(posOffset.X, posOffset.Y),
 		pixel.V(posOffset.X, posOffset.Y+size.Y),
 		pixel.V(posOffset.X+size.X, posOffset.Y+size.Y),
 		pixel.V(posOffset.X+size.X, posOffset.Y),
 	)
 
-	// orientate sprite
-	sprite.SetMatrix(pixel.IM.Rotated(posCentre, angle))
-	sprite.Polygon(0)
-	sprite.Draw(win)
+	// orientate imd
+	imd.SetMatrix(pixel.IM.Rotated(posCentre, angle))
+	imd.Polygon(0)
 }
 
 // DrawCircleBody draws a circle shape.
-func DrawCircleBody(win *pixelgl.Window, pos pixel.Vec, radius float64, colour color.Color) {
-	sprite := imdraw.New(nil)
-	sprite.Color = colour
-	sprite.Push(pos)
-	sprite.Circle(radius, 0)
-
-	sprite.Draw(win)
+func DrawCircleBody(imd *imdraw.IMDraw, pos pixel.Vec, radius float64, colour color.Color) {
+	imd.Color = colour
+	imd.Push(pos)
+	imd.Circle(radius, 0)
 }
 
 // ToPixelVec converts a Box2D vector to a pixel vector.

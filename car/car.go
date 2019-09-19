@@ -7,7 +7,7 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
-	"github.com/faiface/pixel/pixelgl"
+	"github.com/faiface/pixel/imdraw"
 	"github.com/lucasb-eyer/go-colorful"
 
 	"github.com/jemgunay/box2d-car-demo/box"
@@ -160,8 +160,16 @@ func (c *Car) Pos() pixel.Vec {
 	return box.ToPixelVec(c.body.GetPosition())
 }
 
-// Destroy destroys the car, causing the wheels to disconnect.
-func (c *Car) Destroy(world *box2d.B2World) {
+// Destroy cleans up the car's physics bodies.
+func (c *Car) Destroy() {
+	for _, w := range c.wheels {
+		w.body.GetWorld().DestroyBody(w.body)
+	}
+	c.body.GetWorld().DestroyBody(c.body)
+}
+
+// Explode destroys the car, causing the wheels to disconnect.
+func (c *Car) Explode(world *box2d.B2World) {
 	c.health = 0
 	c.healthState = Destroyed
 
@@ -339,7 +347,6 @@ func (c *Car) Update(world *box2d.B2World, dt float64) {
 			continue
 		}
 
-
 		// update revolving wheels
 		if wheel.revolveType == standardRevolve {
 			wheel.setAngle(box.DegToRad(c.wheelAngle))
@@ -361,7 +368,7 @@ func (c *Car) Update(world *box2d.B2World, dt float64) {
 	// process health state
 	if c.healthState != Destroyed && c.health <= 0 {
 		// destroy car if health not above 0
-		c.Destroy(world)
+		c.Explode(world)
 	}
 
 	// update colour to reflect health
@@ -369,13 +376,13 @@ func (c *Car) Update(world *box2d.B2World, dt float64) {
 }
 
 // Draw draws the car and its wheels.
-func (c *Car) Draw(win *pixelgl.Window) {
+func (c *Car) Draw(imd *imdraw.IMDraw) {
 	// draw wheels
 	for _, wheel := range c.wheels {
-		box.DrawRectBody(win, box.ToPixelVec(wheel.body.GetPosition()), wheel.size, wheel.body.GetAngle(), wheel.colour)
+		box.DrawRectBody(imd, box.ToPixelVec(wheel.body.GetPosition()), wheel.size, wheel.body.GetAngle(), wheel.colour)
 	}
 
-	box.DrawRectBody(win, box.ToPixelVec(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
+	box.DrawRectBody(imd, box.ToPixelVec(c.body.GetPosition()), c.size, c.body.GetAngle(), c.colour)
 }
 
 type wheelRevolveType uint

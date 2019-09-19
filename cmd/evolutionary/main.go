@@ -10,6 +10,7 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/jemgunay/box2d-car-demo/genetics"
 
@@ -23,6 +24,7 @@ func main() {
 
 const (
 	Nothing genetics.Option = iota
+	Forward
 	Left
 	Right
 	Brake
@@ -31,7 +33,7 @@ const (
 func start() {
 	rand.Seed(time.Now().UnixNano())
 
-	population, err := genetics.NewPopulation(10, 10, []genetics.Option{Nothing, Left, Right, Brake})
+	population, err := genetics.NewPopulation(10, 20, []genetics.Option{Nothing, Forward, Left, Right, Brake})
 	if err != nil {
 		fmt.Printf("failed to create initial population: %s\n", err)
 		return
@@ -63,7 +65,8 @@ func start() {
 	box.MainGround = box.NewGround(&world, winCentre, win.Bounds().Size())
 
 	// create car
-	mainCar := car.NewCar(&world, winCentre, pixel.V(38, 80))
+	initialCarPos := pixel.V(winCentre.X, 100)
+	mainCar := car.NewCar(&world, initialCarPos, pixel.V(38, 80))
 
 	// create wall props
 	walls := []*box.Wall{
@@ -73,26 +76,17 @@ func start() {
 		box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
 	}
 
-	// create crates
-	crateSize := pixel.V(50, 50)
-	crates := []*box.Crate{
-		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+250), crateSize),
-		box.NewCrate(&world, pixel.V(winCentre.X-30, win.Bounds().Min.Y+190), crateSize),
-		box.NewCrate(&world, pixel.V(winCentre.X+30, win.Bounds().Min.Y+190), crateSize),
-		box.NewCrate(&world, pixel.V(winCentre.X-60, win.Bounds().Min.Y+130), crateSize),
-		box.NewCrate(&world, pixel.V(winCentre.X+60, win.Bounds().Min.Y+130), crateSize),
-		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+130), crateSize),
-	}
-
+	targetPos := win.Bounds().Max.Sub(pixel.V(200, 200))
 	const (
-		realtimeWorldStep    = 1000.0
+		realtimeWorldStep    = 10.0
 		acceleratedWorldStep = 10.0
 	)
-	worldStepScaler := acceleratedWorldStep
-	targetPos := pixel.V(0, 0)
+	worldStepScaler := realtimeWorldStep
+	imd := imdraw.New(nil)
 
 	// main game render and physics step loop
 	done := make(chan struct{})
+	carDelete := make(chan struct{})
 	go func() {
 		// limit update cycles FPS
 		frameRateLimiter := time.Tick(time.Second / 120)
@@ -108,6 +102,14 @@ func start() {
 				return
 			}
 
+			// concurrently recreate car
+			select {
+			case <-carDelete:
+				mainCar.Destroy()
+				mainCar = car.NewCar(&world, initialCarPos, pixel.V(38, 80))
+			default:
+			}
+
 			mainCar.Update(&world, dt)
 
 			world.Step(dt/worldStepScaler, 8, 3)
@@ -115,14 +117,17 @@ func start() {
 
 			// draw window
 			win.Clear(color.White)
+			imd.Clear()
+
 			for _, wall := range walls {
-				wall.Draw(win)
+				wall.Draw(imd)
 			}
-			for _, crate := range crates {
-				crate.Draw(win)
-			}
-			box.DrawCircleBody(win, targetPos, 20.0, pixel.RGB(224, 187, 228))
-			mainCar.Draw(win)
+
+			// draw target for car to reach
+			box.DrawCircleBody(imd, targetPos, 40.0, pixel.ToRGBA(color.RGBA{204, 255, 153, 255}))
+
+			mainCar.Draw(imd)
+			imd.Draw(win)
 			win.Update()
 
 			<-frameRateLimiter
@@ -131,21 +136,22 @@ func start() {
 
 	// perform evolution iterations
 	go func() {
-		fmt.Printf("0)\n%s\n\n", population)
-		for i := 0; i < 30; i++ {
+		for i := 0; i < 3000; i++ {
 			population.PerformSelection()
-			fmt.Printf("%d)\n%s\n", population.Iteration, population)
+			fmt.Printf("========= %d =========\n", population.Iteration)
 
-			population.FitnessSum = 0
 			for _, s := range population.Sequences {
 				// reset car for this sequence
-				mainCar = car.NewCar(&world, winCentre, pixel.V(38, 80))
+				carDelete <- struct{}{}
 
 				// run sequence through fitness function
 				for _, v := range s.Data {
 					switch v {
 					case Nothing:
 						// do nothing/stop accelerating
+					case Forward:
+						mainCar.Accelerating = true
+						mainCar.SetSteerState(car.SteerNone)
 					case Left:
 						// forwards and left
 						mainCar.Accelerating = true
@@ -159,7 +165,8 @@ func start() {
 						mainCar.Braking = true
 					}
 
-					time.Sleep(time.Millisecond * 1000 / time.Duration(worldStepScaler)) // 100ms
+					//time.Sleep(time.Millisecond * 1000 / time.Duration(worldStepScaler)) // 100ms
+					time.Sleep(time.Millisecond * 2) // 100ms
 
 					// reset states
 					mainCar.SetSteerState(car.SteerNone)
@@ -168,8 +175,10 @@ func start() {
 				}
 
 				// determine fitness of sequence
-				s.FitnessValue = mainCar.Pos().To(targetPos).Normal().Len()
+				s.FitnessValue = mainCar.Pos().Sub(targetPos).Len()
 				population.FitnessSum += s.FitnessValue
+
+				fmt.Printf("%v -> %f\n", s.Data, s.FitnessValue)
 			}
 		}
 
