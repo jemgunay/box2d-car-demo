@@ -1,4 +1,4 @@
-// Package main setups up the demo world.
+// Package main sets up the demo world.
 package main
 
 import (

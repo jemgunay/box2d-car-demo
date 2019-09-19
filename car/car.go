@@ -155,6 +155,11 @@ func (c *carContactListener) PostSolve(contact box2d.B2ContactInterface, impulse
 	}
 }
 
+// Pos returns the car's current position.
+func (c *Car) Pos() pixel.Vec {
+	return box.ToPixelVec(c.body.GetPosition())
+}
+
 // Destroy destroys the car, causing the wheels to disconnect.
 func (c *Car) Destroy(world *box2d.B2World) {
 	c.health = 0

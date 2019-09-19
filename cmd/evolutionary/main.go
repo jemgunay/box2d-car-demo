@@ -1,10 +1,11 @@
-// Package main setups up the demo world.
+// Package main sets up the evolutionary world.
 package main
 
 import (
 	"fmt"
 	"image/color"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/ByteArena/box2d"
@@ -20,21 +21,21 @@ func main() {
 	pixelgl.Run(start)
 }
 
+const (
+	Nothing genetics.Option = iota
+	Left
+	Right
+	Brake
+)
+
 func start() {
 	rand.Seed(time.Now().UnixNano())
 
-	population, err := genetics.NewPopulation(10, []byte{'x', 'w', 'a', 'd'})
+	population, err := genetics.NewPopulation(10, 10, []genetics.Option{Nothing, Left, Right, Brake})
 	if err != nil {
-		fmt.Printf("failed to create population: %s\n", err)
+		fmt.Printf("failed to create initial population: %s\n", err)
 		return
 	}
-
-	population.PerformSelection()
-	fmt.Printf("1) %v\n", population.Solutions)
-	population.PerformSelection()
-	fmt.Printf("2) %v\n", population.Solutions)
-	population.PerformSelection	()
-	fmt.Printf("3) %v\n", population.Solutions)
 
 	// create window config
 	cfg := pixelgl.WindowConfig{
@@ -83,63 +84,103 @@ func start() {
 		box.NewCrate(&world, pixel.V(winCentre.X, win.Bounds().Min.Y+130), crateSize),
 	}
 
-	// limit update cycles FPS
-	frameRateLimiter := time.Tick(time.Second / 120)
-	prevTimestamp := time.Now()
+	const (
+		realtimeWorldStep    = 1000.0
+		acceleratedWorldStep = 10.0
+	)
+	worldStepScaler := acceleratedWorldStep
+	targetPos := pixel.V(0, 0)
 
-	// main game loop
-	for !win.Closed() {
-		dt := float64(time.Since(prevTimestamp).Nanoseconds()) / 1e6
-		prevTimestamp = time.Now()
+	// main game render and physics step loop
+	done := make(chan struct{})
+	go func() {
+		// limit update cycles FPS
+		frameRateLimiter := time.Tick(time.Second / 120)
+		prevTimestamp := time.Now()
 
-		// handle keyboard input
-		if win.JustPressed(pixelgl.KeyEscape) {
-			return
+		for !win.Closed() {
+			dt := float64(time.Since(prevTimestamp).Nanoseconds()) / 1e6
+			prevTimestamp = time.Now()
+
+			// handle keyboard input
+			if win.JustPressed(pixelgl.KeyEscape) {
+				close(done)
+				return
+			}
+
+			mainCar.Update(&world, dt)
+
+			world.Step(dt/worldStepScaler, 8, 3)
+			world.ClearForces()
+
+			// draw window
+			win.Clear(color.White)
+			for _, wall := range walls {
+				wall.Draw(win)
+			}
+			for _, crate := range crates {
+				crate.Draw(win)
+			}
+			box.DrawCircleBody(win, targetPos, 20.0, pixel.RGB(224, 187, 228))
+			mainCar.Draw(win)
+			win.Update()
+
+			<-frameRateLimiter
 		}
-		if win.JustPressed(pixelgl.KeyR) {
-			mainCar = car.NewCar(&world, winCentre, pixel.V(38, 80))
+	}()
+
+	// perform evolution iterations
+	go func() {
+		fmt.Printf("0)\n%s\n\n", population)
+		for i := 0; i < 30; i++ {
+			population.PerformSelection()
+			fmt.Printf("%d)\n%s\n", population.Iteration, population)
+
+			population.FitnessSum = 0
+			for _, s := range population.Sequences {
+				// reset car for this sequence
+				mainCar = car.NewCar(&world, winCentre, pixel.V(38, 80))
+
+				// run sequence through fitness function
+				for _, v := range s.Data {
+					switch v {
+					case Nothing:
+						// do nothing/stop accelerating
+					case Left:
+						// forwards and left
+						mainCar.Accelerating = true
+						mainCar.SetSteerState(car.SteerLeft)
+					case Right:
+						// forwards and right
+						mainCar.Accelerating = true
+						mainCar.SetSteerState(car.SteerRight)
+					case Brake:
+						// brake
+						mainCar.Braking = true
+					}
+
+					time.Sleep(time.Millisecond * 1000 / time.Duration(worldStepScaler)) // 100ms
+
+					// reset states
+					mainCar.SetSteerState(car.SteerNone)
+					mainCar.Accelerating = false
+					mainCar.Braking = false
+				}
+
+				// determine fitness of sequence
+				s.FitnessValue = mainCar.Pos().To(targetPos).Normal().Len()
+				population.FitnessSum += s.FitnessValue
+			}
 		}
 
-		if win.Pressed(pixelgl.KeyA) && !win.Pressed(pixelgl.KeyD) {
-			mainCar.SetSteerState(car.SteerLeft)
-		} else if win.Pressed(pixelgl.KeyD) && !win.Pressed(pixelgl.KeyA) {
-			mainCar.SetSteerState(car.SteerRight)
-		} else {
-			mainCar.SetSteerState(car.SteerNone)
+		// output ordered results
+		sort.Slice(population.Sequences, func(i, j int) bool {
+			return population.Sequences[i].FitnessValue < population.Sequences[j].FitnessValue
+		})
+		for _, s := range population.Sequences {
+			fmt.Printf("%v [%v]\n", s.Data, s.FitnessValue)
 		}
+	}()
 
-		if win.JustPressed(pixelgl.KeyQ) {
-			newDir := mainCar.ToggleDirection()
-			fmt.Println(newDir)
-		}
-
-		if win.Pressed(pixelgl.KeyW) {
-			mainCar.Accelerating = true
-		} else {
-			mainCar.Accelerating = false
-		}
-		if win.Pressed(pixelgl.KeyS) {
-			mainCar.Braking = true
-		} else {
-			mainCar.Braking = false
-		}
-
-		mainCar.Update(&world, dt)
-
-		world.Step(dt/1000.0, 8, 3)
-		world.ClearForces()
-
-		// draw window
-		win.Clear(color.White)
-		for _, wall := range walls {
-			wall.Draw(win)
-		}
-		for _, crate := range crates {
-			crate.Draw(win)
-		}
-		mainCar.Draw(win)
-		win.Update()
-
-		<-frameRateLimiter
-	}
+	<-done
 }

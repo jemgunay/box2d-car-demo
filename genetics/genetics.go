@@ -1,31 +1,48 @@
 package genetics
 
 import (
+	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/pkg/errors"
 )
 
+/*
+1) Generate initial zeroed Sequences
+2) Evaluate FitnessValue
+   Selection - Roulette Wheel Selection
+   Crossover
+   Mutation
+*/
+
+type Option byte
+
 type Population struct {
-	Solutions []Sequence
-	Iteration uint64
-	options   []byte
+	Sequences      []*Sequence
+	Iteration      uint64
+	populationSize int
+	solutionSize   int
+	options        []Option
+	FitnessSum     float64
 }
 
-func NewPopulation(populationSize, solutionSize int, options []byte) (*Population, error) {
+func NewPopulation(populationSize, solutionSize int, options []Option) (*Population, error) {
 	if len(options) < 2 {
 		return nil, errors.New("number of options must be 2 or greater")
 	}
 	if populationSize%2 != 0 || populationSize < 4 {
-		return nil, errors.New("population size must be even and greater than 4")
+		return nil, errors.New("Sequences size must be even and greater than 4")
 	}
 	p := &Population{
-		Solutions: make([]Sequence, 0, populationSize),
-		options:   options,
+		Sequences:      make([]*Sequence, populationSize),
+		populationSize: populationSize,
+		solutionSize:   solutionSize,
+		options:        options,
 	}
-	// create sequences of predetermined lengths
-	for i := range p.Solutions {
-		p.Solutions[i] = NewSequence(solutionSize)
+	// create Sequences of predetermined lengths
+	for i := range p.Sequences {
+		p.Sequences[i] = NewSequence(solutionSize)
 	}
 
 	return p, nil
@@ -33,96 +50,101 @@ func NewPopulation(populationSize, solutionSize int, options []byte) (*Populatio
 
 func (p *Population) PerformSelection() {
 	p.Iteration++
-	newSolutions := make([]Sequence, 0, len(p.Solutions))
 
-	for i := 0; i < len(p.Solutions); i+=2 {
+	// determine fitness ratios from fitness values
+	for _, s := range p.Sequences {
+		s.FitnessRatio = s.FitnessValue / p.FitnessSum
+		fmt.Println(s.FitnessRatio, s.FitnessValue, p.FitnessSum)
+	}
+
+	// perform selection and apply mutations
+	newSequences := make([]*Sequence, 0, len(p.Sequences))
+	for i := 0; i < len(p.Sequences)/2; i++ {
 		firstParent := p.rouletteWheelSelection()
 		secondParent := p.rouletteWheelSelection()
 
 		// crossover
-		c1, c2 := Crossover(firstParent, secondParent)
-		//Swap(c1, c2)
+		c1, c2 := crossover(firstParent, secondParent)
+		swap(c1, c2)
 		// mutate
-		c1.Mutate(p.options)
-		c2.Mutate(p.options)
+		c1.mutate(p.options)
+		c2.mutate(p.options)
 
-		newSolutions[i] = c1
-		newSolutions[i+1] = c1
+		newSequences = append(newSequences, c1, c2)
 	}
 
-	p.Solutions = newSolutions
+	p.Sequences = newSequences
 }
 
-func (p *Population) rouletteWheelSelection() Sequence {
+func (p *Population) String() string {
+	buf := strings.Builder{}
+	for _, s := range p.Sequences {
+		buf.WriteString(fmt.Sprintf("%v\n", s.Data))
+	}
+	return buf.String()
+}
+
+func (p *Population) rouletteWheelSelection() *Sequence {
 	r := rand.Float64()
 
 	var total float64
-	for _, s := range p.Solutions {
-		total += s.fitnessRatio
+	for _, s := range p.Sequences {
+		total += s.FitnessRatio
 
 		if r <= total {
 			return s
 		}
 	}
 
-	return p.Solutions[0]
+	return p.Sequences[0]
 }
 
 type Sequence struct {
-	data         []byte
-	fitnessValue float64
-	fitnessRatio float64
+	Data         []Option
+	FitnessValue float64
+	FitnessRatio float64
 }
 
-func NewSequence(size int) Sequence {
-	return Sequence{
-		data: make([]byte, 0, size),
+func NewSequence(size int) *Sequence {
+	return &Sequence{
+		Data: make([]Option, size),
 	}
 }
 
-func Crossover(s1, s2 Sequence) (Sequence, Sequence) {
-	size := len(s1.data)
+func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
+	size := len(s1.Data)
 	c1 := NewSequence(size)
 	c2 := NewSequence(size)
 
 	// TODO: scale min/max to size
-	separator := randRange(2, size-2)
+	separator := randRange(3, size-3)
 
 	for i := separator; i < size; i++ {
 		if i < separator {
-			// keep first half of sequences same as original sequence
-			c1.data[i] = s1.data[i]
-			c2.data[i] = s2.data[i]
+			// keep first half of Sequences same as original sequence
+			c1.Data[i] = s1.Data[i]
+			c2.Data[i] = s2.Data[i]
 		}
-		// cross over second half of sequences
-		c1.data[i] = s2.data[i]
-		c2.data[i] = s1.data[i]
+		// cross over second half of Sequences
+		c1.Data[i] = s2.Data[i]
+		c2.Data[i] = s1.Data[i]
 	}
 
 	return c1, c2
 }
 
-func Swap(s1, s2 Sequence) {
-	i1 := randRange(0, len(s1.data)-1)
-	i2 := randRange(0, len(s2.data)-1)
-	s1.data[i1], s2.data[i2] = s2.data[i2], s1.data[i1]
+func swap(s1, s2 *Sequence) {
+	i := randRange(0, len(s1.Data)-1)
+	j := randRange(0, len(s2.Data)-1)
+	s1.Data[i], s2.Data[j] = s2.Data[j], s1.Data[i]
 }
 
-func (s Sequence) Mutate(options []byte) {
-	randOption := options[randRange(0, len(options)-1)]
-	randIndex := randRange(0, len(s.data)-1)
-	s.data[randIndex] = randOption
+func (s Sequence) mutate(options []Option) {
+	randOption := randRange(0, len(options)-1)
+	randIndex := randRange(0, len(s.Data)-1)
+	s.Data[randIndex] = options[randOption]
 }
-
-// TODO:
-/*
-1) Generate initial zeroed population
-2) Evaluate fitnessValue
-   Selection - Roulette Wheel Selection
-   Crossover
-   Mutation
-*/
 
 func randRange(min, max int) int {
-	return rand.Intn(max-min) + min
+	return rand.Intn(max-min+1) + min
 }

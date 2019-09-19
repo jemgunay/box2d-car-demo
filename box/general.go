@@ -51,6 +51,16 @@ func DrawRectBody(win *pixelgl.Window, pos, size pixel.Vec, angle float64, colou
 	sprite.Draw(win)
 }
 
+// DrawCircleBody draws a circle shape.
+func DrawCircleBody(win *pixelgl.Window, pos pixel.Vec, radius float64, colour color.Color) {
+	sprite := imdraw.New(nil)
+	sprite.Color = colour
+	sprite.Push(pos)
+	sprite.Circle(radius, 0)
+
+	sprite.Draw(win)
+}
+
 // ToPixelVec converts a Box2D vector to a pixel vector.
 func ToPixelVec(vec box2d.B2Vec2) pixel.Vec {
 	return pixel.V(vec.X, vec.Y)
