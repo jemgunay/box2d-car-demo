@@ -33,7 +33,7 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 		return nil, errors.New("number of options must be 2 or greater")
 	}
 	if populationSize%2 != 0 || populationSize < 4 {
-		return nil, errors.New("Sequences size must be even and greater than 4")
+		return nil, errors.New("sequence size must be even and greater than 4")
 	}
 	p := &Population{
 		Sequences:      make([]*Sequence, populationSize),
@@ -41,7 +41,7 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 		solutionSize:   solutionSize,
 		options:        options,
 	}
-	// create Sequences of predetermined lengths
+	// create sequence of predetermined lengths
 	for i := range p.Sequences {
 		p.Sequences[i] = NewSequence(solutionSize)
 	}
@@ -49,7 +49,16 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 	return p, nil
 }
 
-const ratioExponentialScale = 1.0/55.0
+func (p *Population) Randomise() {
+	for i := range p.Sequences {
+		for j := range p.Sequences[i].Data {
+			randOption := randRange(0, len(p.options)-2)
+			p.Sequences[i].Data[j] = p.options[randOption]
+		}
+	}
+}
+
+var ratioExponentialScale = 1.0 / 55.0 // sum of 1 to 10
 
 func (p *Population) PerformSelection() {
 	p.Iteration++
@@ -60,7 +69,6 @@ func (p *Population) PerformSelection() {
 	})
 	for i, s := range p.Sequences {
 		s.FitnessRatio = ratioExponentialScale * float64(i+1)
-		//fmt.Printf("%v [%v]\n", s.Data, s.FitnessValue)
 	}
 	p.FitnessSum = 0
 
@@ -126,7 +134,7 @@ func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
 	c2 := NewSequence(size)
 
 	// TODO: offset from centre randomly
-	separator := size/2
+	separator := size / 2
 
 	for i := separator; i < size; i++ {
 		if i < separator {

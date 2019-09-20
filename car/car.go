@@ -157,7 +157,7 @@ func (c *carContactListener) PostSolve(contact box2d.B2ContactInterface, impulse
 
 // Pos returns the car's current position.
 func (c *Car) Pos() pixel.Vec {
-	return box.ToPixelVec(c.body.GetPosition())
+	return box.ToPixelVec(c.body.GetPosition()).Scaled(box.Box2DToWorld)
 }
 
 // Destroy cleans up the car's physics bodies.
