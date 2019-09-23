@@ -71,7 +71,7 @@ func processSequenceString(sequence string) ([]byte, error) {
 
 func start() {
 	// parse flags
-	numIterations := flag.Int("iterations", 10000, "number of evolution iterations")
+	numIterations := flag.Int("iterations", 1000, "number of evolution iterations")
 	sequenceInput := flag.String("seq", "", "play back a predetermined sequence (space separated integers)")
 	flag.Parse()
 
@@ -129,7 +129,7 @@ func start() {
 		fmt.Printf("failed to create initial population: %s\n", err)
 		return
 	}
-	population.Randomise()
+	//population.Randomise()
 
 	// main game render and physics step loop
 	go stepAndDraw()
@@ -147,8 +147,6 @@ func start() {
 				// run sequence through fitness function
 				for _, v := range s.Data {
 					switch v {
-					case Nothing:
-						// do nothing/stop accelerating
 					case Forward:
 						// forwards, no steering
 						mainCar.Accelerating = true
@@ -176,7 +174,7 @@ func start() {
 
 				// determine fitness of sequence
 				// TODO: contain final velocity in fitness function, i.e. a car with 0 velocity is the most fit
-				s.FitnessValue = mainCar.Pos().Sub(targetPos).Len()
+				s.FitnessValue = mainCar.Pos().Sub(targetPos).Len() + mainCar.GetSpeedKMH()*10
 				population.FitnessSum += s.FitnessValue
 
 				fmt.Printf("%v -> %f\n", s.Data, s.FitnessValue)

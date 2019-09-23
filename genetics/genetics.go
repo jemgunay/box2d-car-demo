@@ -133,14 +133,16 @@ func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
 	c1 := NewSequence(size)
 	c2 := NewSequence(size)
 
-	// TODO: offset from centre randomly
-	separator := size / 2
+	// TODO: safely offset from centre (use 30-70% range instead of hardcoded 3)
+	separator := randRange(3, (len(c1.Data)-1)-3)
 
-	for i := separator; i < size; i++ {
+	for i := 0; i < size; i++ {
 		if i < separator {
 			// keep first half of Sequences same as original sequence
 			c1.Data[i] = s1.Data[i]
 			c2.Data[i] = s2.Data[i]
+			continue
+
 		}
 		// cross over second half of Sequences
 		c1.Data[i] = s2.Data[i]
