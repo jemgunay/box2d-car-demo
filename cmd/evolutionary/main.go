@@ -36,7 +36,7 @@ const (
 
 var (
 	populationSize = 10
-	solutionSize   = 10
+	solutionSize   = 20
 
 	win   *pixelgl.Window
 	world box2d.B2World
@@ -175,6 +175,7 @@ func start() {
 				}
 
 				// determine fitness of sequence
+				// TODO: contain final velocity in fitness function, i.e. a car with 0 velocity is the most fit
 				s.FitnessValue = mainCar.Pos().Sub(targetPos).Len()
 				population.FitnessSum += s.FitnessValue
 

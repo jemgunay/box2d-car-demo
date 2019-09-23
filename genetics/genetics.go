@@ -68,7 +68,7 @@ func (p *Population) PerformSelection() {
 		return p.Sequences[i].FitnessValue < p.Sequences[j].FitnessValue
 	})
 	for i, s := range p.Sequences {
-		s.FitnessRatio = ratioExponentialScale * float64(i+1)
+		s.FitnessRatio = 1 - (ratioExponentialScale * float64(i+1))
 	}
 	p.FitnessSum = 0
 
