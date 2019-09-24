@@ -3,29 +3,21 @@ package genetics
 import (
 	"fmt"
 	"math/rand"
-	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
-/*
-1) Generate initial zeroed Sequences
-2) Evaluate FitnessValue
-   Selection - Roulette Wheel Selection
-   Crossover
-   Mutation
-*/
-
 type Option byte
 
 type Population struct {
-	Sequences      []*Sequence
-	Iteration      uint64
-	populationSize int
-	solutionSize   int
-	options        []Option
-	FitnessSum     float64
+	Sequences           []*Sequence
+	Iteration           uint64
+	populationSize      int
+	solutionSize        int
+	options             []Option
+	FitnessSum          float64
+	ratioExpScaleFactor float64
 }
 
 func NewPopulation(populationSize, solutionSize int, options []Option) (*Population, error) {
@@ -46,6 +38,12 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 		p.Sequences[i] = NewSequence(solutionSize)
 	}
 
+	//
+	for i := 0; i < populationSize; i++ {
+		p.ratioExpScaleFactor += float64(i + 1)
+	}
+	p.ratioExpScaleFactor = 1.0 / p.ratioExpScaleFactor
+
 	return p, nil
 }
 
@@ -58,17 +56,18 @@ func (p *Population) Randomise() {
 	}
 }
 
-var ratioExponentialScale = 1.0 / 55.0 // sum of 1 to 10
-
 func (p *Population) PerformSelection() {
 	p.Iteration++
 
 	// determine fitness ratios from fitness values
-	sort.Slice(p.Sequences, func(i, j int) bool {
+	/*sort.Slice(p.Sequences, func(i, j int) bool {
 		return p.Sequences[i].FitnessValue < p.Sequences[j].FitnessValue
-	})
-	for i, s := range p.Sequences {
-		s.FitnessRatio = 1 - (ratioExponentialScale * float64(i+1))
+	})*/
+	for _, s := range p.Sequences {
+		// each sequence can get selected relative to its fitness
+		s.FitnessRatio = 1 - (s.FitnessValue / p.FitnessSum)
+		// more fit sequences are exponentially more likely to get selected
+		//s.FitnessRatio = 1 - (p.ratioExpScaleFactor * float64(i+1))
 	}
 	p.FitnessSum = 0
 
@@ -83,9 +82,7 @@ func (p *Population) PerformSelection() {
 		swap(c1, c2)
 		// mutate
 		c1.mutate(p.options)
-		//c1.mutate(p.options)
 		c2.mutate(p.options)
-		//c2.mutate(p.options)
 
 		newSequences = append(newSequences, c1, c2)
 	}
@@ -133,20 +130,21 @@ func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
 	c1 := NewSequence(size)
 	c2 := NewSequence(size)
 
-	// TODO: safely offset from centre (use 30-70% range instead of hardcoded 3)
-	separator := randRange(3, (len(c1.Data)-1)-3)
+	// offset from centre, use 30-70% range
+	offset := int(float64(len(c1.Data)) * 0.3)
+	separator := randRange(offset, (len(c1.Data)-1)-offset)
 
+	swapLeft := randRange(0, 1) == 0
 	for i := 0; i < size; i++ {
-		if i < separator {
-			// keep first half of Sequences same as original sequence
+		if (swapLeft && i < separator) || (!swapLeft && i > separator) {
+			// cross over one half of sequences
+			c1.Data[i] = s2.Data[i]
+			c2.Data[i] = s1.Data[i]
+		} else {
+			// keep other half of sequences same as original sequences
 			c1.Data[i] = s1.Data[i]
 			c2.Data[i] = s2.Data[i]
-			continue
-
 		}
-		// cross over second half of Sequences
-		c1.Data[i] = s2.Data[i]
-		c2.Data[i] = s1.Data[i]
 	}
 
 	return c1, c2

@@ -89,6 +89,5 @@ func Rotate(vec pixel.Vec, angle float64) pixel.Vec {
 	angle = NormaliseRadians(angle)
 	vX := vec.X*math.Cos(angle) - vec.Y*math.Sin(angle)
 	vY := vec.X*math.Sin(angle) + vec.Y*math.Cos(angle)
-
 	return pixel.V(vX, vY)
 }

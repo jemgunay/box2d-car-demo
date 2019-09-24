@@ -7,3 +7,5 @@ A port of a top-down car demo written in JS (http://domasx2.github.io/gamejs-box
 - A/D to steer
 - Q to toggle gear between forwards/backwards
 - R to reset car
+
+`1 1 3 3 3 1 1 1 1 1 0 4 4 4 4 4 4 4 4 4`

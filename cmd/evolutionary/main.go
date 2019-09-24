@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"image/color"
 	"math/rand"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -49,7 +48,7 @@ var (
 	carResetChan = make(chan struct{})
 )
 
-func processSequenceString(sequence string) ([]byte, error) {
+func processSequenceString(sequence string) ([]genetics.Option, error) {
 	if sequence == "" {
 		return nil, nil
 	}
@@ -58,13 +57,13 @@ func processSequenceString(sequence string) ([]byte, error) {
 		return nil, errors.New("invalid sequence provided")
 	}
 	// parse each sequence element into byte
-	processedSeqInput := make([]byte, 0, len(items))
+	processedSeqInput := make([]genetics.Option, 0, len(items))
 	for i, item := range items {
 		num, err := strconv.Atoi(item)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process %dth sequence value (%s): %s", i+1, item, err)
 		}
-		processedSeqInput = append(processedSeqInput, byte(num))
+		processedSeqInput = append(processedSeqInput, genetics.Option(num))
 	}
 	return processedSeqInput, nil
 }
@@ -76,7 +75,7 @@ func start() {
 	flag.Parse()
 
 	// process command line flag sequence input
-	_, err := processSequenceString(*sequenceInput)
+	playbackSequence, err := processSequenceString(*sequenceInput)
 	if err != nil {
 		fmt.Printf("failed to process sequence flag value: %s\n", err)
 		return
@@ -116,10 +115,10 @@ func start() {
 
 	// create wall props
 	walls = []*box.Wall{
-		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Min.Y), pixel.V(win.Bounds().W(), 30)),
-		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Max.Y), pixel.V(win.Bounds().W(), 30)),
-		box.NewWall(&world, pixel.V(win.Bounds().Min.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
-		box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
+		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Min.Y), pixel.V(win.Bounds().W(), 30)), // bottom
+		//box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Max.Y), pixel.V(win.Bounds().W(), 30)), // top
+		box.NewWall(&world, pixel.V(win.Bounds().Min.X, winCentre.Y), pixel.V(30, win.Bounds().H())), // left
+		//box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())), // right
 	}
 
 	targetPos = win.Bounds().Max.Sub(pixel.V(200, 200))
@@ -136,61 +135,71 @@ func start() {
 
 	// perform evolution iterations
 	go func() {
+		if playbackSequence != nil {
+			for {
+				// reset car for this sequence
+				carResetChan <- struct{}{}
+				// execute the sequence provided via the flag
+				executeSequence(playbackSequence)
+
+				time.Sleep(time.Second * 3)
+			}
+		}
+
 		for i := 0; i < *numIterations; i++ {
 			population.PerformSelection()
-			fmt.Printf("================ %d ================\n", population.Iteration)
+			fmt.Printf("=================== %d ===================\n", population.Iteration)
 
 			for _, s := range population.Sequences {
 				// reset car for this sequence
 				carResetChan <- struct{}{}
 
-				// run sequence through fitness function
-				for _, v := range s.Data {
-					switch v {
-					case Forward:
-						// forwards, no steering
-						mainCar.Accelerating = true
-					case Left:
-						// forwards and left
-						mainCar.Accelerating = true
-						mainCar.SetSteerState(car.SteerLeft)
-					case Right:
-						// forwards and right
-						mainCar.Accelerating = true
-						mainCar.SetSteerState(car.SteerRight)
-					case Brake:
-						// brake
-						mainCar.Braking = true
-					}
+				// perform a series of car movements that reflect the provided sequence
+				executeSequence(s.Data)
 
-					//time.Sleep(time.Millisecond * 1000 / time.Duration(worldStepScaler)) // 100ms
-					time.Sleep(time.Millisecond * 200) // 100ms
-
-					// reset states
-					mainCar.SetSteerState(car.SteerNone)
-					mainCar.Accelerating = false
-					mainCar.Braking = false
-				}
-
-				// determine fitness of sequence
-				// TODO: contain final velocity in fitness function, i.e. a car with 0 velocity is the most fit
-				s.FitnessValue = mainCar.Pos().Sub(targetPos).Len() + mainCar.GetSpeedKMH()*10
+				// determine fitness of sequence, consisting of distance between car and target, as well as the final
+				// velocity by the end of the sequence
+				finalDist := mainCar.Pos().Sub(targetPos).Len()
+				finalVel := mainCar.GetSpeedKMH() * 10
+				s.FitnessValue = finalDist + finalVel
 				population.FitnessSum += s.FitnessValue
 
-				fmt.Printf("%v -> %f\n", s.Data, s.FitnessValue)
+				fmt.Printf("%v -> %.2f (d=%.2f, v=%.2f)\n", s.Data, s.FitnessValue, finalDist, finalVel)
 			}
-		}
-
-		// output ordered results
-		sort.Slice(population.Sequences, func(i, j int) bool {
-			return population.Sequences[i].FitnessValue < population.Sequences[j].FitnessValue
-		})
-		for _, s := range population.Sequences {
-			fmt.Printf("%v [%v]\n", s.Data, s.FitnessValue)
 		}
 	}()
 
 	<-done
+}
+
+func executeSequence(sequence []genetics.Option) {
+	// run sequence through fitness function
+	for _, v := range sequence {
+		switch v {
+		case Forward:
+			// forwards, no steering
+			mainCar.Accelerating = true
+		case Left:
+			// forwards and left
+			mainCar.Accelerating = true
+			mainCar.SetSteerState(car.SteerLeft)
+		case Right:
+			// forwards and right
+			mainCar.Accelerating = true
+			mainCar.SetSteerState(car.SteerRight)
+		case Brake:
+			// brake
+			mainCar.Braking = true
+		}
+
+		//time.Sleep(time.Millisecond * 1000 / time.Duration(worldStepScaler)) // 100ms
+		time.Sleep(time.Millisecond * 200)
+
+		// reset states
+		mainCar.SetSteerState(car.SteerNone)
+		mainCar.Accelerating = false
+		mainCar.Braking = false
+	}
 }
 
 func resetCar() {
@@ -226,7 +235,7 @@ func stepAndDraw() {
 			return
 		}
 
-		// concurrently recreate car to nil pointer panic
+		// concurrently recreate car to avoid nil pointer panic
 		select {
 		case <-carResetChan:
 			resetCar()
