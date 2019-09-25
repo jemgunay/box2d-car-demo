@@ -45,7 +45,8 @@ You can also replay a sequence:
 ```
 Strong example for level 1:
 ./evolutionary -seed=0 -seq="0 1 3 2 0 3 3 2 1 0 3 0 4 4 2 3 4 4 4 4"
-
+```
+```
 Strong example for level 2:
 ./evolutionary -seed=0 -level=2 -seq="0 3 0 3 3 0 4 0 0 0 0 0 1 1 1 3 3 3 3 4 0 1 0 1 0 2 2 4 4 4"
 ```
