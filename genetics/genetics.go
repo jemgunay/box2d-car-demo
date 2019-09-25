@@ -3,6 +3,7 @@ package genetics
 import (
 	"fmt"
 	"math/rand"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -38,7 +39,7 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 		p.Sequences[i] = NewSequence(solutionSize)
 	}
 
-	//
+	// determine scale factor for exponential fitness weighting
 	for i := 0; i < populationSize; i++ {
 		p.ratioExpScaleFactor += float64(i + 1)
 	}
@@ -60,14 +61,14 @@ func (p *Population) PerformSelection() {
 	p.Iteration++
 
 	// determine fitness ratios from fitness values
-	/*sort.Slice(p.Sequences, func(i, j int) bool {
+	sort.Slice(p.Sequences, func(i, j int) bool {
 		return p.Sequences[i].FitnessValue < p.Sequences[j].FitnessValue
-	})*/
-	for _, s := range p.Sequences {
+	})
+	for i, s := range p.Sequences {
 		// each sequence can get selected relative to its fitness
-		s.FitnessRatio = 1 - (s.FitnessValue / p.FitnessSum)
+		//s.FitnessRatio = 1 - (s.FitnessValue / p.FitnessSum)
 		// more fit sequences are exponentially more likely to get selected
-		//s.FitnessRatio = 1 - (p.ratioExpScaleFactor * float64(i+1))
+		s.FitnessRatio = 1 - (p.ratioExpScaleFactor * float64(i+1))
 	}
 	p.FitnessSum = 0
 
@@ -157,6 +158,11 @@ func swap(s1, s2 *Sequence) {
 }
 
 func (s Sequence) mutate(options []Option) {
+	// 50% chance of mutation
+	if randRange(0, 1) == 0 {
+		return
+	}
+
 	randOption := randRange(0, len(options)-1)
 	randIndex := randRange(0, len(s.Data)-1)
 	s.Data[randIndex] = options[randOption]

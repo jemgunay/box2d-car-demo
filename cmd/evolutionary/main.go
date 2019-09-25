@@ -72,6 +72,7 @@ func start() {
 	// parse flags
 	numIterations := flag.Int("iterations", 1000, "number of evolution iterations")
 	sequenceInput := flag.String("seq", "", "play back a predetermined sequence (space separated integers)")
+	seed := flag.Int64("seed", -1, "random number generator seed (random if not provided)")
 	flag.Parse()
 
 	// process command line flag sequence input
@@ -82,8 +83,11 @@ func start() {
 	}
 
 	// seed rand generator
-	//rand.Seed(time.Now().UnixNano())
-	rand.Seed(0)
+	if *seed == -1 {
+		rand.Seed(time.Now().UnixNano())
+	} else {
+		rand.Seed(0)
+	}
 
 	// create window config
 	cfg := pixelgl.WindowConfig{
@@ -160,7 +164,7 @@ func start() {
 				// determine fitness of sequence, consisting of distance between car and target, as well as the final
 				// velocity by the end of the sequence
 				finalDist := mainCar.Pos().Sub(targetPos).Len()
-				finalVel := mainCar.GetSpeedKMH() * 10
+				finalVel := mainCar.GetSpeedKMH() * 5
 				s.FitnessValue = finalDist + finalVel
 				population.FitnessSum += s.FitnessValue
 
