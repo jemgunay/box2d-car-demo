@@ -147,11 +147,11 @@ func start() {
 		// basic sequence playback
 		if playbackSequence != nil {
 			for {
-				// execute the sequence provided via the flag
-				executeSequence(playbackSequence)
-
 				// reset car for this sequence
 				carResetChan <- struct{}{}
+
+				// execute the sequence provided via the flag
+				executeSequence(playbackSequence)
 			}
 		}
 
@@ -171,16 +171,8 @@ func start() {
 				carResetChan <- struct{}{}
 
 				// perform a series of car movements that reflect the provided sequence
-				executeSequence(s.Data)
-
-				// determine fitness of sequence, consisting of distance between car and target, as well as the final
-				// velocity by the end of the sequence
-				finalDist := mainCar.Pos().Sub(targetPos).Len()
-				finalVel := mainCar.GetSpeedKMH() * 5
-				s.FitnessValue = finalDist + finalVel
+				s.FitnessValue = executeSequence(s.Data)
 				population.FitnessSum += s.FitnessValue
-
-				fmt.Printf("%v -> %.2f (d=%.2f, v=%.2f)\n", s.Data, s.FitnessValue, finalDist, finalVel)
 			}
 		}
 	}()
@@ -188,7 +180,7 @@ func start() {
 	<-done
 }
 
-func executeSequence(sequence []genetics.Option) {
+func executeSequence(sequence []genetics.Option) (fitness float64) {
 	// run sequence through fitness function
 	for _, v := range sequence {
 		switch v {
@@ -216,6 +208,15 @@ func executeSequence(sequence []genetics.Option) {
 		mainCar.Accelerating = false
 		mainCar.Braking = false
 	}
+
+	// determine fitness of sequence, consisting of distance between car and target, as well as the final
+	// velocity by the end of the sequence
+	finalDist := mainCar.Pos().Sub(targetPos).Len()
+	finalVel := mainCar.GetSpeedKMH() * 5
+	fitness = finalDist + finalVel
+
+	fmt.Printf("%v -> %.2f (d=%.2f, v=%.2f)\n", sequence, fitness, finalDist, finalVel)
+	return
 }
 
 func resetCar() {
