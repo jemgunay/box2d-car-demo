@@ -35,14 +35,14 @@ const (
 
 var (
 	populationSize = 10
-	solutionSize   = 20
+	sequenceSize   = 20
 
 	win   *pixelgl.Window
 	world box2d.B2World
 
-	mainCar   *car.Car
-	walls     []*box.Wall
-	targetPos pixel.Vec
+	mainCar                  *car.Car
+	walls                    []*box.Wall
+	targetPos, initialCarPos pixel.Vec
 
 	done         = make(chan struct{})
 	carResetChan = make(chan struct{})
@@ -71,8 +71,10 @@ func processSequenceString(sequence string) ([]genetics.Option, error) {
 func start() {
 	// parse flags
 	numIterations := flag.Int("iterations", 1000, "number of evolution iterations")
+	flag.IntVar(&sequenceSize, "seq_size", sequenceSize, "sequence size of each competitor")
 	sequenceInput := flag.String("seq", "", "play back a predetermined sequence (space separated integers)")
 	seed := flag.Int64("seed", -1, "random number generator seed (random if not provided)")
+	level := flag.Int64("level", 1, "the level to load on startup (1=basic, 2=obstacle)")
 	flag.Parse()
 
 	// process command line flag sequence input
@@ -84,10 +86,9 @@ func start() {
 
 	// seed rand generator
 	if *seed == -1 {
-		rand.Seed(time.Now().UnixNano())
-	} else {
-		rand.Seed(0)
+		*seed = time.Now().UnixNano()
 	}
+	rand.Seed(*seed)
 
 	// create window config
 	cfg := pixelgl.WindowConfig{
@@ -106,16 +107,15 @@ func start() {
 
 	// create Box2D world
 	world = box2d.MakeB2World(box2d.MakeB2Vec2(0, 0))
-	winCentre := win.Bounds().Center()
-
 	// enable contact filter
 	world.SetContactFilter(&box2d.B2ContactFilter{})
+	winCentre := win.Bounds().Center()
+
+	initialCarPos = pixel.V(win.Bounds().Center().X, 100)
+	targetPos = win.Bounds().Max.Sub(pixel.V(200, 200))
 
 	// create ground
 	box.MainGround = box.NewGround(&world, winCentre, win.Bounds().Size())
-
-	// create car
-	resetCar()
 
 	// create wall props
 	walls = []*box.Wall{
@@ -125,29 +125,41 @@ func start() {
 		//box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())), // right
 	}
 
-	targetPos = win.Bounds().Max.Sub(pixel.V(200, 200))
+	// create obstacle
+	if *level == 2 {
+		obstacleSize := pixel.V(50, 300)
+		walls = append(
+			walls,
+			box.NewWall(&world, pixel.V(winCentre.X-250-obstacleSize.X/2, obstacleSize.Y/2), obstacleSize),
+			box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Max.Y-obstacleSize.Y/2), obstacleSize),
+		)
 
-	population, err := genetics.NewPopulation(populationSize, solutionSize, []genetics.Option{Nothing, Forward, Left, Right, Brake})
-	if err != nil {
-		fmt.Printf("failed to create initial population: %s\n", err)
-		return
+		initialCarPos = win.Bounds().Min.Add(pixel.V(125, 100))
 	}
-	//population.Randomise()
 
-	// main game render and physics step loop
+	// create car
+	resetCar()
+
+	// start main game render and physics step loop
 	go stepAndDraw()
 
-	// perform evolution iterations
 	go func() {
+		// basic sequence playback
 		if playbackSequence != nil {
 			for {
-				// reset car for this sequence
-				carResetChan <- struct{}{}
 				// execute the sequence provided via the flag
 				executeSequence(playbackSequence)
 
-				time.Sleep(time.Second * 3)
+				// reset car for this sequence
+				carResetChan <- struct{}{}
 			}
+		}
+
+		// perform evolution iterations - create initial population
+		population, err := genetics.NewPopulation(populationSize, sequenceSize, []genetics.Option{Nothing, Forward, Left, Right, Brake})
+		if err != nil {
+			fmt.Printf("failed to create initial population: %s\n", err)
+			return
 		}
 
 		for i := 0; i < *numIterations; i++ {
@@ -210,7 +222,7 @@ func resetCar() {
 	if mainCar != nil {
 		mainCar.Destroy()
 	}
-	mainCar = car.NewCar(&world, pixel.V(win.Bounds().Center().X, 100), pixel.V(38, 80))
+	mainCar = car.NewCar(&world, initialCarPos, pixel.V(38, 80))
 }
 
 const (
