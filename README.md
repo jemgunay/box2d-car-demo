@@ -44,9 +44,15 @@ Example population after 64 evolutionary iterations:
 You can also replay a sequence:
 ```
 Strong example for level 1:
-./evolutionary -seed=0 -seq="0 1 3 2 0 3 3 2 1 0 3 0 4 4 2 3 4 4 4 4"
+./evolutionary -seed=0 -seq="0 1 3 3 0 3 3 2 1 0 1 0 4 4 2 3 4 4 4 4"
+[0 1 3 3 0 3 3 2 1 0 1 0 4 4 2 3 4 4 4 4] -> 44.73 (d=18.25, v=26.48)
 ```
 ```
-Strong example for level 2:
-./evolutionary -seed=0 -level=2 -seq="0 2 0 3 3 0 4 1 0 0 0 0 3 3 3 3 0 3 0 1 1 2 0 1 0 4 2 2 0 4"
+Strong examples for level 2:
+./evolutionary -seed=0 -level=2 -seq="0 2 0 3 3 0 4 1 1 0 4 0 3 3 3 3 2 3 0 1 1 2 0 2 0 4 3 4 0 4"
+[0 2 0 3 3 0 4 1 1 0 4 0 3 3 3 3 2 3 0 1 1 2 0 2 0 4 3 4 0 4] -> 119.33 (d=16.84, v=102.49)
+// conventional solution
+[4 3 3 1 4 2 0 3 3 0 0 3 3 3 2 0 4 2 3 0 0 1 4 2 4 2 4 4 4 4] -> 52.00 (d=21.11, v=30.89)
+// over the top
+[3 4 2 3 3 1 2 1 1 1 3 1 1 3 3 3 1 2 1 3 3 1 1 3 1 4 4 4 4 4] -> 71.55 (d=4.15, v=67.40)
 ```
