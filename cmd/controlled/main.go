@@ -1,4 +1,4 @@
-// Package main setups up the demo world.
+// Package main sets up the demo world.
 package main
 
 import (
@@ -8,6 +8,7 @@ import (
 
 	"github.com/ByteArena/box2d"
 	"github.com/faiface/pixel"
+	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 
 	"github.com/jemgunay/box2d-car-demo/box"
@@ -21,7 +22,7 @@ func main() {
 func start() {
 	// create window config
 	cfg := pixelgl.WindowConfig{
-		Title:     "Box2D Car Demo",
+		Title:     "Car Demo",
 		Bounds:    pixel.R(0, 0, 1080, 720),
 		VSync:     false,
 		Resizable: true,
@@ -49,10 +50,10 @@ func start() {
 
 	// create wall props
 	walls := []*box.Wall{
-		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Min.Y), pixel.V(win.Bounds().W(), 30)),
-		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Max.Y), pixel.V(win.Bounds().W(), 30)),
-		box.NewWall(&world, pixel.V(win.Bounds().Min.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
-		box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())),
+		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Min.Y), pixel.V(win.Bounds().W(), 30)), // bottom
+		box.NewWall(&world, pixel.V(winCentre.X, win.Bounds().Max.Y), pixel.V(win.Bounds().W(), 30)), // top
+		box.NewWall(&world, pixel.V(win.Bounds().Min.X, winCentre.Y), pixel.V(30, win.Bounds().H())), // left
+		box.NewWall(&world, pixel.V(win.Bounds().Max.X, winCentre.Y), pixel.V(30, win.Bounds().H())), // right
 	}
 
 	// create crates
@@ -68,18 +69,20 @@ func start() {
 
 	// limit update cycles FPS
 	frameRateLimiter := time.Tick(time.Second / 120)
-	prevTimestamp := time.Now().UTC()
+	prevTimestamp := time.Now()
+	imd := imdraw.New(nil)
 
 	// main game loop
 	for !win.Closed() {
 		dt := float64(time.Since(prevTimestamp).Nanoseconds()) / 1e6
-		prevTimestamp = time.Now().UTC()
+		prevTimestamp = time.Now()
 
 		// handle keyboard input
 		if win.JustPressed(pixelgl.KeyEscape) {
 			return
 		}
 		if win.JustPressed(pixelgl.KeyR) {
+			mainCar.Destroy()
 			mainCar = car.NewCar(&world, winCentre, pixel.V(38, 80))
 		}
 
@@ -114,15 +117,15 @@ func start() {
 
 		// draw window
 		win.Clear(color.White)
+		imd.Clear()
 		for _, wall := range walls {
-			wall.Draw(win)
+			wall.Draw(imd)
 		}
 		for _, crate := range crates {
-			crate.Draw(win)
+			crate.Draw(imd)
 		}
-		mainCar.Draw(win)
-		//camMatrix := pixel.IM.Scaled(win.Bounds().Center(), 1)
-		//win.SetMatrix(camMatrix)
+		mainCar.Draw(imd)
+		imd.Draw(win)
 		win.Update()
 
 		<-frameRateLimiter
