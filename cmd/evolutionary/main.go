@@ -161,6 +161,7 @@ func start() {
 			fmt.Printf("failed to create initial population: %s\n", err)
 			return
 		}
+		//population.Randomise()
 
 		for i := 0; i < *numIterations; i++ {
 			population.PerformSelection()
