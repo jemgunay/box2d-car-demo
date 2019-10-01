@@ -10,7 +10,7 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/lucasb-eyer/go-colorful"
 
-	"github.com/jemgunay/box2d-car-demo/box"
+	"github.com/jemgunay/evolutionary-driving/box"
 )
 
 // SteerState determines the direction the car is steering in.

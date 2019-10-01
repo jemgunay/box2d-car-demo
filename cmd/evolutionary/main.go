@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"image/color"
@@ -14,11 +15,10 @@ import (
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
-	"github.com/jemgunay/box2d-car-demo/genetics"
-	"github.com/pkg/errors"
+	"github.com/jemgunay/evolutionary-driving/genetics"
 
-	"github.com/jemgunay/box2d-car-demo/box"
-	"github.com/jemgunay/box2d-car-demo/car"
+	"github.com/jemgunay/evolutionary-driving/box"
+	"github.com/jemgunay/evolutionary-driving/car"
 )
 
 func main() {
@@ -26,11 +26,11 @@ func main() {
 }
 
 const (
-	Nothing genetics.Option = iota
-	Forward
-	Left
-	Right
-	Brake
+	nothing genetics.Option = iota
+	forward
+	left
+	right
+	brake
 )
 
 var (
@@ -156,7 +156,7 @@ func start() {
 		}
 
 		// perform evolution iterations - create initial population
-		population, err := genetics.NewPopulation(populationSize, sequenceSize, []genetics.Option{Nothing, Forward, Left, Right, Brake})
+		population, err := genetics.NewPopulation(populationSize, sequenceSize, []genetics.Option{nothing, forward, left, right, brake})
 		if err != nil {
 			fmt.Printf("failed to create initial population: %s\n", err)
 			return
@@ -185,18 +185,18 @@ func executeSequence(sequence []genetics.Option) (fitness float64) {
 	// run sequence through fitness function
 	for _, v := range sequence {
 		switch v {
-		case Forward:
+		case forward:
 			// forwards, no steering
 			mainCar.Accelerating = true
-		case Left:
+		case left:
 			// forwards and left
 			mainCar.Accelerating = true
 			mainCar.SetSteerState(car.SteerLeft)
-		case Right:
+		case right:
 			// forwards and right
 			mainCar.Accelerating = true
 			mainCar.SetSteerState(car.SteerRight)
-		case Brake:
+		case brake:
 			// brake
 			mainCar.Braking = true
 		}

@@ -11,8 +11,8 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 
-	"github.com/jemgunay/box2d-car-demo/box"
-	"github.com/jemgunay/box2d-car-demo/car"
+	"github.com/jemgunay/evolutionary-driving/box"
+	"github.com/jemgunay/evolutionary-driving/car"
 )
 
 func main() {
