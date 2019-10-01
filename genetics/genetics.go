@@ -9,8 +9,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Option represents a single encoded instruction of which a Sequence can be constructed.
 type Option byte
 
+// Population represents a population of sequences.
 type Population struct {
 	Sequences           []*Sequence
 	Iteration           uint64
@@ -21,6 +23,7 @@ type Population struct {
 	ratioExpScaleFactor float64
 }
 
+// NewPopulation initialises a new Population which is ready to be evolved.
 func NewPopulation(populationSize, solutionSize int, options []Option) (*Population, error) {
 	if len(options) < 2 {
 		return nil, errors.New("number of options must be 2 or greater")
@@ -48,6 +51,8 @@ func NewPopulation(populationSize, solutionSize int, options []Option) (*Populat
 	return p, nil
 }
 
+// Randomise randomises each sequence in the population, setting each Sequence Data value to a random item from the
+// supported Options.
 func (p *Population) Randomise() {
 	for i := range p.Sequences {
 		for j := range p.Sequences[i].Data {
@@ -57,6 +62,8 @@ func (p *Population) Randomise() {
 	}
 }
 
+// PerformSelection performs one iteration of selection in order to produce a fresh population of children from the
+// previous population.
 func (p *Population) PerformSelection() {
 	p.Iteration++
 
@@ -91,6 +98,7 @@ func (p *Population) PerformSelection() {
 	p.Sequences = newSequences
 }
 
+// String formats the population data into a readable string.
 func (p *Population) String() string {
 	buf := strings.Builder{}
 	for _, s := range p.Sequences {
@@ -99,6 +107,8 @@ func (p *Population) String() string {
 	return buf.String()
 }
 
+// Performs roulette wheel selection, where a sequence's likelihood of getting selected is proportional to its fitness.
+// This means even poorly performing sequences have a chance of being selected.
 func (p *Population) rouletteWheelSelection() *Sequence {
 	r := rand.Float64()
 
@@ -114,18 +124,22 @@ func (p *Population) rouletteWheelSelection() *Sequence {
 	return p.Sequences[0]
 }
 
+// Sequence represents a member of a population, containing the genetic composition of that sequence and its overall
+// fitness.
 type Sequence struct {
 	Data         []Option
 	FitnessValue float64
 	FitnessRatio float64
 }
 
+// NewSequence creates an initialised Sequence.
 func NewSequence(size int) *Sequence {
 	return &Sequence{
 		Data: make([]Option, size),
 	}
 }
 
+// performs crossover between two sequences, resulting in two child sequences
 func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
 	size := len(s1.Data)
 	c1 := NewSequence(size)
@@ -151,12 +165,14 @@ func crossover(s1, s2 *Sequence) (*Sequence, *Sequence) {
 	return c1, c2
 }
 
+// swaps a random index in one sequence with a random index in another sequence
 func swap(s1, s2 *Sequence) {
 	i := randRange(0, len(s1.Data)-1)
 	j := randRange(0, len(s2.Data)-1)
 	s1.Data[i], s2.Data[j] = s2.Data[j], s1.Data[i]
 }
 
+// randomly mutates a sequence at a single index - 50/50 chance of returning and skipping the mutation
 func (s Sequence) mutate(options []Option) {
 	// 50% chance of mutation
 	if randRange(0, 1) == 0 {
@@ -168,6 +184,7 @@ func (s Sequence) mutate(options []Option) {
 	s.Data[randIndex] = options[randOption]
 }
 
+// inclusive random integer within a specified range
 func randRange(min, max int) int {
 	return rand.Intn(max-min+1) + min
 }
