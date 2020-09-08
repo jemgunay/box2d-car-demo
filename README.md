@@ -1,6 +1,6 @@
 # Driving Evolutionary Algorithm
 
-Started with a Go port of a JS box2D top-down car demo (http://domasx2.github.io/gamejs-box2d-car-example/), using the Pixel game library and ByteArena's Go box2D port. Ended up with a car evolving to drive around an obstacles! Video here: https://youtu.be/F2pwEOJhNMs
+Started with a Go port of a JS box2D top-down car demo (http://domasx2.github.io/gamejs-box2d-car-example/), using the Pixel game library and ByteArena's Go box2D port. Ended up with a car evolving to drive around obstacles! Video here: https://youtu.be/F2pwEOJhNMs
 
 # Controllable Car Demo
 
